@@ -21,22 +21,16 @@ def parse_args():
     parser.add_argument('--cpu_mode', dest='cpu_mode', help='do not use gpu', action='store_true')
 
     # Caffe - Main colorization model
-    parser.add_argument('--color_prototxt', dest='color_prototxt', help='colorization caffe prototxt', type=str,
-                        default='./models/reference_model/deploy_nodist.prototxt')
-    parser.add_argument('--color_caffemodel', dest='color_caffemodel', help='colorization caffe prototxt', type=str,
-                        default='./models/reference_model/model.caffemodel')
+    parser.add_argument('--color_prototxt', dest='color_prototxt', help='colorization caffe prototxt', type=str, default='./models/reference_model/deploy_nodist.prototxt')
+    parser.add_argument('--color_caffemodel', dest='color_caffemodel', help='colorization caffe prototxt', type=str, default='./models/reference_model/model.caffemodel')
 
     # Caffe - Distribution prediction model
-    parser.add_argument('--dist_prototxt', dest='dist_prototxt', type=str, help='distribution net prototxt',
-                        default='./models/reference_model/deploy_nopred.prototxt')
-    parser.add_argument('--dist_caffemodel', dest='dist_caffemodel', type=str, help='distribution net caffemodel',
-                        default='./models/reference_model/model.caffemodel')
+    parser.add_argument('--dist_prototxt', dest='dist_prototxt', type=str, help='distribution net prototxt', default='./models/reference_model/deploy_nopred.prototxt')
+    parser.add_argument('--dist_caffemodel', dest='dist_caffemodel', type=str, help='distribution net caffemodel', default='./models/reference_model/model.caffemodel')
 
     # PyTorch (same model used for both)
-    parser.add_argument('--color_model', dest='color_model', help='colorization model', type=str,
-                        default='./models/pytorch/caffemodel.pth')
-    parser.add_argument('--dist_model', dest='color_model', help='colorization distribution prediction model', type=str,
-                        default='./models/pytorch/caffemodel.pth')
+    parser.add_argument('--color_model', dest='color_model', help='colorization model', type=str, default='./models/pytorch/caffemodel.pth')
+    parser.add_argument('--dist_model', dest='color_model', help='colorization distribution prediction model', type=str, default='./models/pytorch/caffemodel.pth')
 
     parser.add_argument('--backend', dest='backend', type=str, help='caffe or pytorch', default='caffe')
     parser.add_argument('--pytorch_maskcent', dest='pytorch_maskcent', help='need to center mask (activate for siggraph_pretrained but not for converted caffemodel)', action='store_true')
@@ -82,6 +76,7 @@ if __name__ == '__main__':
     window = gui_design.GUIDesign(color_model=colorModel, dist_model=distModel, img_file=args.image_file, load_size=args.load_size, win_size=args.win_size)
     app.setWindowIcon(QIcon('imgs/logo.png'))  # load logo
     window.setWindowTitle('iColor')
-    window.setWindowFlags(window.windowFlags() & ~Qt.WindowMaximizeButtonHint)   # fix window size
+    window.setWindowFlags(window.windowFlags())
+    window.showMaximized()
     window.show()
     app.exec_()
