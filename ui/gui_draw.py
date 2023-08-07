@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import cv2
 from PyQt5.QtWidgets import QWidget, QApplication, QFileDialog
@@ -228,7 +229,8 @@ class GUIDraw(QWidget):
 
     def load_image(self):
         img_path = QFileDialog.getOpenFileName(self, 'load an input image')[0]
-        self.init_result(img_path)
+        if os.path.isfile(img_path):
+            self.init_result(img_path)
 
     def save_result(self):
         path = os.path.abspath(self.image_file)
