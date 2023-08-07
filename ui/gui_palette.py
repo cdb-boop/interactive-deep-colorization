@@ -72,14 +72,14 @@ class GUIPalette(QWidget):
     def update_ui(self, color_id):
         self.color_id = int(color_id)
         self.update()
-        if color_id >= 0:
+        if color_id >= 0 and color_id < len(self.colors):
             print('choose color (%d) type (%s)' % (color_id, type(color_id)))
             color = self.colors[color_id]
             self.update_color.emit(color)
             self.update()
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:  # click the point
+        if event.button() == Qt.LeftButton and self.colors is not None:  # click the point
             color_id = self.selected_color(event.pos())
             self.update_ui(color_id)
             self.mouseClicked = True
