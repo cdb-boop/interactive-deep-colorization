@@ -34,9 +34,13 @@ git clone https://github.com/junyanz/interactive-deep-colorization ideepcolor
 cd ideepcolor
 ```
 
-- Download the reference model
-```
+- Download the reference model (Linux or OSX)
+```bash
 bash ./models/fetch_models.sh
+```
+- Download the reference model (Windows)
+```powershell
+.\models\fetch_models.bat
 ```
 
 - Install [Caffe](http://caffe.berkeleyvision.org/installation.html) or [PyTorch]() and 3rd party Python libraries ([OpenCV](http://opencv.org/), [scikit-learn](http://scikit-learn.org/stable/install.html) and [scikit-image](https://github.com/scikit-image/scikit-image)). See the [Requirements](#Requirements) for more details.
@@ -109,15 +113,9 @@ sudo apt-get install python-opencv
 sudo apt-get install qt5-default
 sudo pip install qdarkstyle
 ```
-For Conda users, type the following command lines (this may work for full Anaconda but not Miniconda):
+Conda (this may work for full Anaconda but not Miniconda):
 ```bash
-# ./install/install_conda.sh
-conda install -c anaconda protobuf  ## photobuf
-conda install -c anaconda scikit-learn=0.19.1 ## scikit-learn
-conda install -c anaconda scikit-image=0.13.0  ## scikit-image
-conda install -c menpo opencv=2.4.11   ## opencv
-conda install -c anaconda qt ## qt5
-conda install -c auto qdarkstyle  ## qdarkstyle
+conda env update --name ideepcolor --file ./install/environment_conda.yml
 ```
 
 For Docker users, please follow the Docker [document](https://github.com/junyanz/interactive-deep-colorization/tree/master/docker). 

@@ -1,0 +1,21 @@
+name: ideepcolor
+channels:
+  - anaconda
+  - conda-forge
+  - pytorch
+  - nvidia
+  - pkgw-forge
+dependencies:
+  - matplotlib=3.6.2
+  - numpy>=1.16.5,<1.23.0
+  - opencv=4.6.0
+  - protobuf=3.20.3
+  - python=3.10.12
+  - pytorch::pytorch-cuda=11.8
+  - pytorch::pytorch=2.0.1
+  - conda-forge::pyqt=5.15.4
+  - conda-forge::qdarkstyle=3.0.2
+  - qt=5.15.8
+  - scikit-image=0.19.3
+  - scikit-learn=1.2.0
+  - pytorch::torchvision=0.15.2

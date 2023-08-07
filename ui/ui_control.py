@@ -1,6 +1,6 @@
 import numpy as np
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from PyQt5.QtGui import QColor, QPen
+from PyQt5.QtCore import Qt, QRectF
 import cv2
 
 
@@ -81,7 +81,7 @@ class PointEdit(UserEdit):
         else:
             painter.setPen(QPen(Qt.white, 1))
         painter.setBrush(ca)
-        painter.drawRoundedRect(self.pnt.x() - w, self.pnt.y() - w, 1 + 2 * w, 1 + 2 * w, 2, 2)
+        painter.drawRoundedRect(QRectF(self.pnt.x() - w, self.pnt.y() - w, 1 + 2 * w, 1 + 2 * w), 2, 2)
 
 
 class UIControl:

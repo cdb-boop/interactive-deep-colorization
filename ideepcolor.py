@@ -1,13 +1,15 @@
 from __future__ import print_function
 import sys
 import argparse
-import qdarkstyle
-from PyQt4.QtGui import QApplication, QIcon
-from PyQt4.QtCore import Qt
+#import qdarkstyle
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import Qt
 from ui import gui_design
 from data import colorize_image as CI
 
 sys.path.append('./caffe_files')
+from inspect import getmembers, isfunction
 
 
 def parse_args():
@@ -72,14 +74,14 @@ if __name__ == '__main__':
         distModel.prep_net(path=args.color_model, dist=True)
     else:
         print('backend type [%s] not found!' % args.backend)
+        sys.exit()
 
     # initialize application
     app = QApplication(sys.argv)
-    window = gui_design.GUIDesign(color_model=colorModel, dist_model=distModel,
-                                  img_file=args.image_file, load_size=args.load_size, win_size=args.win_size)
-    app.setStyleSheet(qdarkstyle.load_stylesheet(pyside=False))  # comment this if you do not like dark stylesheet
+    #app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyqt5'))  # comment this if you do not like dark stylesheet
+    window = gui_design.GUIDesign(color_model=colorModel, dist_model=distModel, img_file=args.image_file, load_size=args.load_size, win_size=args.win_size)
     app.setWindowIcon(QIcon('imgs/logo.png'))  # load logo
     window.setWindowTitle('iColor')
-    window.setWindowFlags(window.windowFlags() & ~Qt.WindowMaximizeButtonHint)   # fix window siz
+    window.setWindowFlags(window.windowFlags() & ~Qt.WindowMaximizeButtonHint)   # fix window size
     window.show()
     app.exec_()

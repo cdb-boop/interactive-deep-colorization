@@ -12,7 +12,7 @@ except ImportError:
 
 
 def debug_trace():
-    from PyQt4.QtCore import pyqtRemoveInputHook
+    from PyQt5.QtCore import pyqtRemoveInputHook
     from pdb import set_trace
     pyqtRemoveInputHook()
     set_trace()
