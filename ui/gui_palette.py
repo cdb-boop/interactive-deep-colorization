@@ -1,13 +1,13 @@
 from PyQt5.QtWidgets import QWidget
-from PyQt5.QtGui import QPainter, QColor, QPen
-from PyQt5.QtCore import Qt, pyqtSignal, QSize
+from PyQt5.QtGui import QPainter, QColor, QPen, QPaintEvent, QMouseEvent
+from PyQt5.QtCore import Qt, pyqtSignal, QSize, QPoint
 import numpy as np
 
 
 class GUIPalette(QWidget):
     update_color = pyqtSignal(np.ndarray)
     
-    def __init__(self, grid_sz=(6, 3)):
+    def __init__(self, grid_sz: tuple[int, int] = (6, 3)):
         QWidget.__init__(self)
         self.color_width = 25
         self.border = 6
@@ -20,13 +20,13 @@ class GUIPalette(QWidget):
         self.color_id = -1
         self.reset()
 
-    def set_colors(self, colors):
+    def set_colors(self, colors: np.ndarray) -> None:
         if colors is not None:
             self.colors = (colors[:min(colors.shape[0], self.num_colors), :] * 255).astype(np.uint8)
             self.color_id = -1
             self.update()
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent) -> None:
         painter = QPainter()
         painter.begin(self)
         painter.setRenderHint(QPainter.Antialiasing)
@@ -48,16 +48,16 @@ class GUIPalette(QWidget):
 
         painter.end()
 
-    def sizeHint(self):
+    def sizeHint(self) -> QSize:
         return QSize(self.win_width, self.win_height)
 
-    def reset(self):
+    def reset(self) -> None:
         self.colors = None
         self.mouseClicked = False
         self.color_id = -1
         self.update()
 
-    def selected_color(self, pos):
+    def selected_color(self, pos: QPoint) -> int:
         width = self.color_width + self.border
         dx = pos.x() % width
         dy = pos.y() % width
@@ -69,7 +69,7 @@ class GUIPalette(QWidget):
         else:
             return -1
 
-    def update_ui(self, color_id):
+    def update_ui(self, color_id: int) -> None:
         self.color_id = int(color_id)
         self.update()
         if color_id >= 0 and color_id < len(self.colors):
@@ -78,16 +78,16 @@ class GUIPalette(QWidget):
             self.update_color.emit(color)
             self.update()
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event: QMouseEvent) -> None:
         if event.button() == Qt.LeftButton and self.colors is not None:  # click the point
             color_id = self.selected_color(event.pos())
             self.update_ui(color_id)
             self.mouseClicked = True
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
         if self.mouseClicked:
             color_id = self.selected_color(event.pos())
             self.update_ui(color_id)
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         self.mouseClicked = False

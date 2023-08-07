@@ -1,15 +1,16 @@
 import cv2
 from PyQt5.QtWidgets import QWidget
-from PyQt5.QtGui import QPainter, QPen, QImage
-from PyQt5.QtCore import Qt, pyqtSignal, QPointF, QSize
+from PyQt5.QtGui import QPainter, QPen, QImage, QPaintEvent, QMouseEvent
+from PyQt5.QtCore import Qt, pyqtSignal, QPointF, QPoint, QSize
 from data import lab_gamut
 import numpy as np
+import warnings
 
 
 class GUIGamut(QWidget):
     update_color = pyqtSignal(np.ndarray)
-    
-    def __init__(self, gamut_size=110):
+
+    def __init__(self, gamut_size: int = 110):
         QWidget.__init__(self)
         self.gamut_size = gamut_size
         self.win_size = gamut_size * 2  # divided by 4
@@ -17,30 +18,34 @@ class GUIGamut(QWidget):
         self.ab_grid = lab_gamut.abGrid(gamut_size=gamut_size, D=1)
         self.reset()
 
-    def set_gamut(self, l_in=50):
+    def set_gamut(self, l_in: np.float64 = 50) -> None:
         self.l_in = l_in
         self.ab_map, self.mask = self.ab_grid.update_gamut(l_in=l_in)
         self.update()
 
-    def set_ab(self, color):
+    def set_ab(self, color: np.ndarray) -> None:
         self.color = color
         self.lab = lab_gamut.rgb2lab_1d(self.color)
         x, y = self.ab_grid.ab2xy(self.lab[1], self.lab[2])
         self.pos = QPointF(x, y)
         self.update()
 
-    def is_valid_point(self, pos):
-        if pos is None or self.mask is None:
+    def is_valid_point(self, pos: QPoint) -> bool:
+        if not isinstance(pos, QPoint):
+            warnings.warn(f"'is_valid_point()' expected 'pos' of type 'QPoint'.", RuntimeWarning)
+            return False
+        if self.mask is None:
+            warnings.warn(f"GuiGamut 'mask' is type 'None'.", RuntimeWarning)
             return False
         else:
             x = pos.x()
             y = pos.y()
             if x >= 0 and y >= 0 and x < self.win_size and y < self.win_size:
-                return self.mask[y, x]
+                return self.mask[y, x].astype(bool)
             else:
                 return False
 
-    def update_ui(self, pos):
+    def update_ui(self, pos: QPoint) -> None:
         self.pos = pos
         a, b = self.ab_grid.xy2ab(pos.x(), pos.y())
         # get color we need L
@@ -50,7 +55,7 @@ class GUIGamut(QWidget):
         self.update_color.emit(color)
         self.update()
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent) -> None:
         painter = QPainter()
         painter.begin(self)
         painter.setRenderHint(QPainter.Antialiasing)
@@ -72,26 +77,26 @@ class GUIGamut(QWidget):
             painter.drawLine(QPointF(x, y - w), QPointF(x, y + w))
         painter.end()
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event: QMouseEvent) -> None:
         pos = event.pos()
 
         if event.button() == Qt.LeftButton and self.is_valid_point(pos):  # click the point
             self.update_ui(pos)
             self.mouseClicked = True
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
         pos = event.pos()
         if self.is_valid_point(pos):
             if self.mouseClicked:
                 self.update_ui(pos)
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         self.mouseClicked = False
 
-    def sizeHint(self):
+    def sizeHint(self) -> QSize:
         return QSize(self.win_size, self.win_size)
 
-    def reset(self):
+    def reset(self) -> None:
         self.ab_map = None
         self.mask = None
         self.color = None

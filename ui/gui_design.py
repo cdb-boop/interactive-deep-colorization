@@ -1,14 +1,23 @@
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QGroupBox, QPushButton, QCheckBox
+from PyQt5.QtGui import QKeyEvent
 from PyQt5.QtCore import Qt
 from . import gui_draw
 from . import gui_vis
 from . import gui_gamut
 from . import gui_palette
+from data import colorize_image
 import time
 
 
 class GUIDesign(QWidget):
-    def __init__(self, color_model, dist_model=None, img_file=None, load_size=256, win_size=256, save_all=True):
+    def __init__(
+            self, 
+            color_model: colorize_image.ColorizeImageTorch, 
+            dist_model: colorize_image.ColorizeImageTorchDist | None = None, 
+            img_file: str | None = None, 
+            load_size: int = 256, 
+            win_size: int = 256, 
+            save_all: bool = True):
         # draw the layout
         QWidget.__init__(self)
         # main layout
@@ -111,7 +120,7 @@ class GUIDesign(QWidget):
         if img_file is not None:
             self.drawWidget.init_result(img_file)
 
-    def AddWidget(self, widget, title):
+    def AddWidget(self, widget: QWidget, title: str) -> QVBoxLayout:
         widgetLayout = QVBoxLayout()
         widgetBox = QGroupBox()
         widgetBox.setTitle(title)
@@ -122,10 +131,10 @@ class GUIDesign(QWidget):
 
         return widgetLayout
 
-    def nextImage(self):
+    def nextImage(self) -> None:
         self.drawWidget.nextImage()
 
-    def reset(self):
+    def reset(self) -> None:
         # self.start_t = time.time()
         print('============================reset all=========================================')
         self.visWidget.reset()
@@ -136,25 +145,25 @@ class GUIDesign(QWidget):
         self.update()
         self.colorPush.setStyleSheet("background-color: grey")
 
-    def enable_gray(self):
+    def enable_gray(self) -> None:
         self.drawWidget.enable_gray()
 
-    def quit(self):
+    def quit(self) -> None:
         print('time spent = %3.3f' % (time.time() - self.start_t))
         self.close()
 
-    def save(self):
+    def save(self) -> None:
         print('time spent = %3.3f' % (time.time() - self.start_t))
         self.drawWidget.save_result()
 
-    def load(self):
+    def load(self) -> None:
         self.drawWidget.load_image()
 
-    def change_color(self):
+    def change_color(self) -> None:
         print('change color')
         self.drawWidget.change_color(use_suggest=True)
 
-    def keyPressEvent(self, event):
+    def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.key() == Qt.Key_R:
             self.reset()
 

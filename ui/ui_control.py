@@ -1,11 +1,12 @@
 import numpy as np
-from PyQt5.QtGui import QColor, QPen
-from PyQt5.QtCore import Qt, QRectF
+from PyQt5.QtGui import QColor, QPen, QPainter
+from PyQt5.QtCore import Qt, QRectF, QPoint
 import cv2
+import warnings
 
 
 class UserEdit(object):
-    def __init__(self, mode, win_size, load_size, img_size):
+    def __init__(self, mode, win_size: int, load_size: int, img_size: tuple[int, int]):
         self.mode = mode
         self.win_size = win_size
         self.img_size = img_size
@@ -20,7 +21,7 @@ class UserEdit(object):
         self.ui_count = 0
         print(self)
 
-    def scale_point(self, in_x, in_y, w):
+    def scale_point(self, in_x: int, in_y: int, w: int) -> tuple[int, int]:
         x = int((in_x - self.dw) / float(self.img_w) * self.load_size) + w
         y = int((in_y - self.dh) / float(self.img_h) * self.load_size) + w
         return x, y
@@ -30,26 +31,26 @@ class UserEdit(object):
 
 
 class PointEdit(UserEdit):
-    def __init__(self, win_size, load_size, img_size):
+    def __init__(self, win_size: int, load_size: int, img_size: tuple[int, int]):
         UserEdit.__init__(self, 'point', win_size, load_size, img_size)
 
-    def add(self, pnt, color, userColor, width, ui_count):
+    def add(self, pnt: QPoint, color: QColor, userColor: QColor, width: float, ui_count: int):
         self.pnt = pnt
         self.color = color
         self.userColor = userColor
         self.width = width
         self.ui_count = ui_count
 
-    def select_old(self, pnt, ui_count):
+    def select_old(self, pnt: QPoint, ui_count: int) -> tuple[QColor, float]:
         self.pnt = pnt
         self.ui_count = ui_count
         return self.userColor, self.width
 
-    def update_color(self, color, userColor):
+    def update_color(self, color: QColor, userColor: QColor) -> None:
         self.color = color
         self.userColor = userColor
 
-    def updateInput(self, im, mask, vis_im):
+    def updateInput(self, im: np.ndarray, mask: np.ndarray, vis_im: np.ndarray) -> None:
         w = int(self.width / self.scale)
         pnt = self.pnt
         x1, y1 = self.scale_point(pnt.x(), pnt.y(), -w)
@@ -62,12 +63,12 @@ class PointEdit(UserEdit):
         cv2.rectangle(im, tl, br, c, -1)
         cv2.rectangle(vis_im, tl, br, uc, -1)
 
-    def is_same(self, pnt):
+    def is_same(self, pnt: QPoint) -> bool:
         dx = abs(self.pnt.x() - pnt.x())
         dy = abs(self.pnt.y() - pnt.y())
         return dx <= self.width + 1 and dy <= self.width + 1
 
-    def update_painter(self, painter):
+    def update_painter(self, painter: QPainter) -> None:
         w = max(3, self.width)
         c = self.color
         r = c.red()
@@ -85,7 +86,7 @@ class PointEdit(UserEdit):
 
 
 class UIControl:
-    def __init__(self, win_size=256, load_size=512):
+    def __init__(self, win_size: int = 256, load_size: int = 512):
         self.win_size = win_size
         self.load_size = load_size
         self.reset()
@@ -93,13 +94,14 @@ class UIControl:
         self.userEdits = []
         self.ui_count = 0
 
-    def setImageSize(self, img_size):
+    def setImageSize(self, img_size: tuple[int, int]) -> None:
         self.img_size = img_size
 
-    def addStroke(self, prevPnt, nextPnt, color, userColor, width):
+    def addStroke(self, prevPnt: QPoint, nextPnt: QPoint, color: QColor, userColor: QColor, width: float) -> None:
+        warnings.warn(f"'addStroke()' unimplemented.", RuntimeWarning)
         pass
 
-    def erasePoint(self, pnt):
+    def erasePoint(self, pnt: QPoint) -> bool:
         isErase = False
         for id, ue in enumerate(self.userEdits):
             if ue.is_same(pnt):
@@ -109,7 +111,7 @@ class UIControl:
                 break
         return isErase
 
-    def addPoint(self, pnt, color, userColor, width):
+    def addPoint(self, pnt: QPoint, color: QColor, userColor: QColor, width: float) -> tuple[QColor, float, bool]:
         self.ui_count += 1
         print('process add Point')
         self.userEdit = None
@@ -131,22 +133,24 @@ class UIControl:
             userColor, width = self.userEdit.select_old(pnt, self.ui_count)
             return userColor, width, isNew
 
-    def movePoint(self, pnt, color, userColor, width):
+    def movePoint(self, pnt: QPoint, color: QColor, userColor: QColor, width: float) -> None:
         self.userEdit.add(pnt, color, userColor, width, self.ui_count)
 
-    def update_color(self, color, userColor):
+    def update_color(self, color: QColor, userColor: QColor) -> None:
         self.userEdit.update_color(color, userColor)
 
-    def update_painter(self, painter):
+    def update_painter(self, painter: QPainter) -> None:
         for ue in self.userEdits:
             if ue is not None:
                 ue.update_painter(painter)
 
-    def get_stroke_image(self, im):
+    def get_stroke_image(self, im: np.ndarray) -> np.ndarray:
+        warnings.warn(f"'get_stroke_image()' unimplemented.", RuntimeWarning)
         return im
 
-    def used_colors(self):  # get recently used colors
+    def get_recently_used_colors(self) -> np.ndarray | None:
         if len(self.userEdits) == 0:
+            warnings.warn(f"'used_colors()' has no edits.", RuntimeWarning)
             return None
         nEdits = len(self.userEdits)
         ui_counts = np.zeros(nEdits)
@@ -174,7 +178,7 @@ class UIControl:
         unique_colors = np.vstack(unique_colors)
         return unique_colors / 255.0
 
-    def get_input(self):
+    def get_input(self) -> tuple[np.ndarray, np.ndarray]:
         h = self.load_size
         w = self.load_size
         im = np.zeros((h, w, 3), np.uint8)
@@ -186,7 +190,7 @@ class UIControl:
 
         return im, mask
 
-    def reset(self):
+    def reset(self) -> None:
         self.userEdits = []
         self.userEdit = None
         self.ui_count = 0

@@ -12,7 +12,7 @@ sys.path.append('./caffe_files')
 from inspect import getmembers, isfunction
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='iDeepColor: deep interactive colorization')
     # basic parameters
     parser.add_argument('--win_size', dest='win_size', help='the size of the main window', type=int, default=512)
@@ -67,7 +67,7 @@ if __name__ == '__main__':
         distModel = CI.ColorizeImageTorchDist(Xd=args.load_size,maskcent=args.pytorch_maskcent)
         distModel.prep_net(path=args.color_model, dist=True)
     else:
-        print('backend type [%s] not found!' % args.backend)
+        print('Backend type [%s] unknown.' % args.backend)
         sys.exit()
 
     # initialize application

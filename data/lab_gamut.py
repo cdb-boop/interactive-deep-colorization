@@ -1,21 +1,22 @@
 import numpy as np
 from skimage import color
+from PyQt5.QtGui import QColor
 import warnings
 
 
-def qcolor2lab_1d(qc):
-    # take 1d numpy array and do color conversion
+def qcolor2lab_1d(qc: QColor) -> np.ndarray:
+    # take QColor and do color conversion
     c = np.array([qc.red(), qc.green(), qc.blue()], np.uint8)
     return rgb2lab_1d(c)
 
 
-def rgb2lab_1d(in_rgb):
+def rgb2lab_1d(in_rgb: np.ndarray) -> np.ndarray:
     # take 1d numpy array and do color conversion
     # print('in_rgb', in_rgb)
     return color.rgb2lab(in_rgb[np.newaxis, np.newaxis, :]).flatten()
 
 
-def lab2rgb_1d(in_lab, clip=True, dtype='uint8'):
+def lab2rgb_1d(in_lab, clip: bool = True, dtype: str = 'uint8') -> np.ndarray:
     warnings.filterwarnings("ignore")
     tmp_rgb = color.lab2rgb(in_lab[np.newaxis, np.newaxis, :]).flatten()
     if clip:
@@ -25,7 +26,7 @@ def lab2rgb_1d(in_lab, clip=True, dtype='uint8'):
     return tmp_rgb
 
 
-def snap_ab(input_l, input_rgb, return_type='rgb'):
+def snap_ab(input_l: np.float64, input_rgb: np.ndarray, return_type: str = 'rgb') -> np.ndarray:
     ''' given an input lightness and rgb, snap the color into a region where l,a,b is in-gamut
     '''
     T = 20
@@ -53,7 +54,7 @@ def snap_ab(input_l, input_rgb, return_type='rgb'):
 
 
 class abGrid():
-    def __init__(self, gamut_size=110, D=1):
+    def __init__(self, gamut_size: int = 110, D: int = 1):
         self.D = D
         self.vals_b, self.vals_a = np.meshgrid(np.arange(-gamut_size, gamut_size + D, D),
                                                np.arange(-gamut_size, gamut_size + D, D))
@@ -63,7 +64,7 @@ class abGrid():
         self.AB = self.A * self.B
         self.gamut_size = gamut_size
 
-    def update_gamut(self, l_in):
+    def update_gamut(self, l_in: np.float64) -> tuple[np.ndarray, np.ndarray]:
         warnings.filterwarnings("ignore")
         thresh = 1.0
         pts_lab = np.concatenate((l_in + np.zeros((self.A, self.B, 1)), self.pts_full_grid), axis=2)
@@ -77,13 +78,13 @@ class abGrid():
         self.masked_rgb[np.invert(mask3)] = 255
         return self.masked_rgb, self.mask
 
-    def ab2xy(self, a, b):
+    def ab2xy(self, a: np.float64, b: np.float64) -> tuple[np.float64, np.float64]:
         y = self.gamut_size + a
         x = self.gamut_size + b
         # print('ab2xy (%d, %d) -> (%d, %d)' % (a, b, x, y))
         return x, y
 
-    def xy2ab(self, x, y):
+    def xy2ab(self, x: np.float64, y: np.float64) -> tuple[np.float64, np.float64]:
         a = y - self.gamut_size
         b = x - self.gamut_size
         # print('xy2ab (%d, %d) -> (%d, %d)' % (x, y, a, b))

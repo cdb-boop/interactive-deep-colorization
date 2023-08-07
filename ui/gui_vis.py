@@ -1,13 +1,15 @@
 from PyQt5.QtWidgets import QWidget
-from PyQt5.QtGui import QPainter, QColor, QImage
-from PyQt5.QtCore import Qt, pyqtSignal, QSize
+from PyQt5.QtGui import QPainter, QColor, QImage, QPaintEvent, QMouseEvent
+from PyQt5.QtCore import Qt, pyqtSignal, QSize, QPoint
 QString = str
+import numpy as np
+import warnings
 
 
 class GUI_VIS(QWidget):
     update_color = pyqtSignal(QString)
     
-    def __init__(self, win_size=256, scale=2.0):
+    def __init__(self, win_size: int = 256, scale: float = 2.0):
         QWidget.__init__(self)
         self.result = None
         self.win_width = win_size
@@ -15,7 +17,7 @@ class GUI_VIS(QWidget):
         self.scale = scale
         self.setFixedSize(self.win_width, self.win_height)
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent) -> None:
         painter = QPainter()
         painter.begin(self)
         painter.setRenderHint(QPainter.Antialiasing)
@@ -29,31 +31,32 @@ class GUI_VIS(QWidget):
 
         painter.end()
 
-    def update_result(self, result):
+    def update_result(self, result: np.ndarray) -> None:
         self.result = result
         self.update()
 
-    def sizeHint(self):
+    def sizeHint(self) -> QSize:
         return QSize(self.win_width, self.win_height)
 
-    def reset(self):
+    def reset(self) -> None:
         self.update()
         self.result = None
 
-    def is_valid_point(self, pos):
-        if pos is None:
+    def is_valid_point(self, pos) -> bool:
+        if not isinstance(pos, QPoint):
+            warnings.warn(f"'is_valid_point()' expected 'pos' of type 'QPoint'.", RuntimeWarning)
             return False
         else:
             x = pos.x()
             y = pos.y()
             return x >= 0 and y >= 0 and x < self.win_width and y < self.win_height
 
-    def scale_point(self, pnt):
+    def scale_point(self, pnt: QPoint) -> tuple[int, int]:
         x = int(pnt.x() / self.scale)
         y = int(pnt.y() / self.scale)
         return x, y
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event: QMouseEvent) -> None:
         pos = event.pos()
         x, y = self.scale_point(pos)
         if event.button() == Qt.LeftButton and self.is_valid_point(pos):  # click the point
@@ -61,8 +64,8 @@ class GUI_VIS(QWidget):
                 color = self.result[y, x, :]  #
                 print('color', color)
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
         pass
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         pass

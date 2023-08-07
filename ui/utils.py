@@ -9,16 +9,18 @@ try:
     import pickle as pickle
 except ImportError:
     import pickle
+from typing import Any
+import warnings
 
 
-def debug_trace():
+def debug_trace() -> None:
     from PyQt5.QtCore import pyqtRemoveInputHook
     from pdb import set_trace
     pyqtRemoveInputHook()
     set_trace()
 
 
-def PickleLoad(file_name):
+def PickleLoad(file_name: str) -> Any:
     try:
         with open(file_name, 'rb') as f:
             data = pickle.load(f)
@@ -28,19 +30,19 @@ def PickleLoad(file_name):
     return data
 
 
-def PickleSave(file_name, data):
+def PickleSave(file_name: str, data: Any) -> None:
     with open(file_name, "wb") as f:
         pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-def varname(p):
+def varname(p: Any):
     for line in inspect.getframeinfo(inspect.currentframe().f_back)[3]:
         m = re.search(r'\bvarname\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)', line)
         if m:
             return m.group(1)
 
 
-def print_numpy(x, val=True, shp=False):
+def print_numpy(x: Any, val: bool = True, shp: bool = False) -> None:
     x = x.astype(np.float64)
     if shp:
         print('shape,', x.shape)
@@ -50,7 +52,7 @@ def print_numpy(x, val=True, shp=False):
             np.mean(x), np.min(x), np.max(x), np.median(x), np.std(x)))
 
 
-def CVShow(im, im_name='', wait=1):
+def CVShow(im: np.ndarray, im_name: str = '', wait: int = 1) -> Any:
     if len(im.shape) >= 3 and im.shape[2] == 3:
         im_show = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
     else:
@@ -61,7 +63,7 @@ def CVShow(im, im_name='', wait=1):
     return im_show
 
 
-def average_image(imgs, weights):
+def average_image(imgs: Any, weights: Any) -> Any:
     im_weights = np.tile(weights[:, np.newaxis, np.newaxis, np.newaxis], (1, imgs.shape[1], imgs.shape[2], imgs.shape[3]))
     imgs_f = imgs.astype(np.float32)
     weights_norm = np.mean(im_weights)
@@ -70,7 +72,7 @@ def average_image(imgs, weights):
     return average
 
 
-def mkdirs(paths):
+def mkdirs(paths: list[str]) -> None:
     if isinstance(paths, list) and not isinstance(paths, str):
         for path in paths:
             mkdir(path)
@@ -78,12 +80,14 @@ def mkdirs(paths):
         mkdir(paths)
 
 
-def mkdir(path):
+def mkdir(path: str) -> None:
     if not os.path.exists(path):
         os.makedirs(path)
+    else:
+        warnings.warn(f"Unable to make directory: {path}.", RuntimeWarning)
 
 
-def grid_vis(X, nh, nw):  # [buggy]
+def grid_vis(X: Any, nh: int, nw: int) -> Any:  # [buggy]
     if X.shape[0] == 1:
         return X[0]
 
