@@ -206,14 +206,15 @@ class GUIDraw(QWidget):
         x, y = self.scale_point(pos)
 
         # snap color based on L color
-        color_array = np.array((c.red(), c.green(), c.blue())).astype(
-            'uint8')
+        color_array = np.array((c.red(), c.green(), c.blue())).astype('uint8')
         mean_L = self.im_l[y, x]
         snap_color = lab_gamut.snap_ab(mean_L, color_array)
         snap_qcolor = QColor(snap_color[0], snap_color[1], snap_color[2])
         return snap_qcolor
 
     def set_color(self, c_rgb):
+        if self.pos is None:
+            return
         c = QColor(c_rgb[0], c_rgb[1], c_rgb[2])
         self.user_color = c
         snap_qcolor = self.calibrate_color(c, self.pos)
