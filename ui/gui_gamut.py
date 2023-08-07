@@ -30,7 +30,7 @@ class GUIGamut(QWidget):
         self.update()
 
     def is_valid_point(self, pos):
-        if pos is None:
+        if pos is None or self.mask is None:
             return False
         else:
             x = pos.x()
