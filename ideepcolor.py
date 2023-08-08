@@ -45,8 +45,10 @@ def parse_args() -> argparse.Namespace:
 if __name__ == '__main__':
     args = parse_args()
 
+    print("Args:")
     for arg in vars(args):
-        print('[%s] =' % arg, getattr(args, arg))
+        print(f"[{arg}] = {getattr(args, arg)}")
+    print("\n")
 
     if args.cpu_mode:
         args.gpu = -1
@@ -67,8 +69,9 @@ if __name__ == '__main__':
         distModel = CI.ColorizeImageTorchDist(Xd=args.load_size,maskcent=args.pytorch_maskcent)
         distModel.prep_net(path=args.color_model, dist=True)
     else:
-        print('Backend type [%s] unknown.' % args.backend)
+        print(f"Backend type [{args.backend}] unknown")
         sys.exit()
+    print("\n")
 
     # initialize application
     app = QApplication(sys.argv)

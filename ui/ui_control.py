@@ -11,7 +11,7 @@ class UserEdit(object):
         self.win_size = win_size
         self.img_size = img_size
         self.load_size = load_size
-        print('image_size', self.img_size)
+        print(f"UserEdit: Image size {self.img_size}")
         max_width = np.max(self.img_size)
         self.scale = float(max_width) / self.load_size
         self.dw = int((self.win_size - img_size[0]) // 2)
@@ -27,7 +27,7 @@ class UserEdit(object):
         return x, y
 
     def __str__(self):
-        return "add (%s) with win_size %3.3f, load_size %3.3f" % (self.mode, self.win_size, self.load_size)
+        return f"UserEdit: Add [{self.mode}] with win_size {self.win_size:3.3f}, load_size {self.load_size:3.3f}."
 
 
 class PointEdit(UserEdit):
@@ -98,7 +98,7 @@ class UIControl:
         self.img_size = img_size
 
     def addStroke(self, prevPnt: QPoint, nextPnt: QPoint, color: QColor, userColor: QColor, width: float) -> None:
-        warnings.warn(f"'addStroke()' unimplemented.", RuntimeWarning)
+        warnings.warn("UIControl: 'addStroke()' unimplemented.", RuntimeWarning)
         pass
 
     def erasePoint(self, pnt: QPoint) -> bool:
@@ -106,27 +106,26 @@ class UIControl:
         for id, ue in enumerate(self.userEdits):
             if ue.is_same(pnt):
                 self.userEdits.remove(ue)
-                print('remove user edit %d\n' % id)
+                print(f"UIControl: Removed user edit {id}.\n")
                 isErase = True
                 break
         return isErase
 
     def addPoint(self, pnt: QPoint, color: QColor, userColor: QColor, width: float) -> tuple[QColor, float, bool]:
         self.ui_count += 1
-        print('process add Point')
         self.userEdit = None
         isNew = True
         for id, ue in enumerate(self.userEdits):
             if ue.is_same(pnt):
                 self.userEdit = ue
                 isNew = False
-                print('select user edit %d\n' % id)
+                print(f"UIControl: Selected user edit {id}.\n")
                 break
 
         if self.userEdit is None:
             self.userEdit = PointEdit(self.win_size, self.load_size, self.img_size)
+            print(f"UIControl: Added user edit index {len(self.userEdits)}.\n")
             self.userEdits.append(self.userEdit)
-            print('add user edit %d\n' % len(self.userEdits))
             self.userEdit.add(pnt, color, userColor, width, self.ui_count)
             return userColor, width, isNew
         else:
@@ -145,12 +144,12 @@ class UIControl:
                 ue.update_painter(painter)
 
     def get_stroke_image(self, im: np.ndarray) -> np.ndarray:
-        warnings.warn(f"'get_stroke_image()' unimplemented.", RuntimeWarning)
+        warnings.warn("UIControl: 'get_stroke_image()' unimplemented.", RuntimeWarning)
         return im
 
     def get_recently_used_colors(self) -> np.ndarray | None:
         if len(self.userEdits) == 0:
-            warnings.warn(f"'used_colors()' has no edits.", RuntimeWarning)
+            warnings.warn("UIControl: 'used_colors()' has no edits.", RuntimeWarning)
             return None
         nEdits = len(self.userEdits)
         ui_counts = np.zeros(nEdits)

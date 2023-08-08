@@ -68,7 +68,7 @@ class GUIDraw(QWidget):
         self.save_result()
         self.image_id += 1
         if self.image_id == self.total_images:
-            print('you have finished all the results')
+            print("GUIDraw: You have finished all the results")
             sys.exit()
         img_current = self.img_list[self.image_id]
         # self.reset()
@@ -79,8 +79,8 @@ class GUIDraw(QWidget):
         # self.result = None
         self.image_loaded = True
         self.image_file = image_file
-        print(image_file)
         image_file = image_file.decode('utf8')
+        print(f"GUIDraw: Open image {image_file}")
         im_bgr = cv2.imread(image_file)
         self.im_full = im_bgr.copy()
         # get image for display
@@ -88,9 +88,10 @@ class GUIDraw(QWidget):
         max_width = max(h, w)
         r = self.win_size / float(max_width)
         self.scale = float(self.win_size) / self.load_size
-        print('scale = %f' % self.scale)
+        print(f"GUIDraw: Image scale {self.scale}")
         rw = int(round(r * w / 4.0) * 4)
         rh = int(round(r * h / 4.0) * 4)
+        print("\n")
 
         self.im_win = cv2.resize(self.im_full, (rw, rh), interpolation=cv2.INTER_CUBIC)
 
@@ -172,7 +173,7 @@ class GUIDraw(QWidget):
 
     def valid_point(self, pnt: QPoint) -> QPoint | None:
         if pnt is None:
-            warnings.warn(f"'change_color()' got a 'pnt' of type 'None'.", RuntimeWarning)
+            warnings.warn(f"GUIDraw: 'pnt' was 'None'", RuntimeWarning)
             return None
         else:
             if pnt.x() >= self.dw and pnt.y() >= self.dh and pnt.x() < self.win_size - self.dw and pnt.y() < self.win_size - self.dh:
@@ -180,7 +181,7 @@ class GUIDraw(QWidget):
                 y = int(np.round(pnt.y()))
                 return QPoint(x, y)
             else:
-                warnings.warn(f"Point ({pnt.x()}, {pnt.y()}) out of bounds.", RuntimeWarning)
+                warnings.warn(f"GUIDraw: Point ({pnt.x()}, {pnt.y()}) is out of bounds", RuntimeWarning)
                 return None
 
     def init_color(self) -> None:
@@ -189,7 +190,7 @@ class GUIDraw(QWidget):
 
     def change_color(self, pos: QPoint) -> None:
         if not isinstance(pos, QPoint):
-            warnings.warn(f"'change_color()' got a 'pos' not of type 'QPoint'.", RuntimeWarning)
+            warnings.warn("GUIDraw: 'pos' was not 'QPoint'", RuntimeWarning)
             return
         
         x, y = self.scale_point(pos)
@@ -219,7 +220,7 @@ class GUIDraw(QWidget):
 
     def set_color(self, c_rgb: np.ndarray) -> None:
         if self.pos is None:
-            warnings.warn(f"'set_color()' got a 'c_rgb' of type 'None'.", RuntimeWarning)
+            warnings.warn("GUIDraw: 'c_rgb' is 'None'", RuntimeWarning)
             return
         c = QColor(c_rgb[0], c_rgb[1], c_rgb[2])
         self.user_color = c
@@ -245,7 +246,7 @@ class GUIDraw(QWidget):
         path = path.decode('utf8')
         save_path = "_".join([path, self.method, suffix])
 
-        print('saving result to <%s>\n' % save_path)
+        print(f"GUIDraw: Saving result to \"{save_path}\"\n")
         if not os.path.exists(save_path):
             os.mkdir(save_path)
 
@@ -286,7 +287,7 @@ class GUIDraw(QWidget):
             colors_rgb_withcurr = np.concatenate((self.model.get_img_forward()[h, w, np.newaxis, :] / 255., colors_rgb), axis=0)
             return colors_rgb_withcurr
         else:
-            warnings.warn(f"'suggest_color()' did not return a color suggestion.", RuntimeWarning)
+            warnings.warn("GUIDraw: No color suggestion returned", RuntimeWarning)
             return None
 
     def compute_result(self) -> None:
@@ -325,22 +326,22 @@ class GUIDraw(QWidget):
     def wheelEvent(self, event: QWheelEvent) -> None:
         d = event.angleDelta().y() / 120
         self.brushWidth = min(4.05 * self.scale, max(0, self.brushWidth + d * self.scale))
-        print('update brushWidth = %f' % self.brushWidth)
+        print(f"GUIDraw: Brush width {self.brushWidth}")
         self.update_ui(move_point=True)
         self.update()
 
     def is_same_point(self, pos1: QPoint, pos2: QPoint) -> bool:
         if pos1 is None or pos2 is None:
-            warnings.warn(f"'is_same_point()' attempted to compare 'None' type.", RuntimeWarning)
+            warnings.warn(f"GUIDraw: Attempted to compare point with 'None' type", RuntimeWarning)
             return False
         dx = pos1.x() - pos2.x()
         dy = pos1.y() - pos2.y()
         d = dx * dx + dy * dy
-        # print('distance between points = %f' % d)
+        # print(f"GUIDraw: Distance between points = {d}")
         return d < 25
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
-        print('mouse press', event.pos())
+        print(f"GUIDraw: Mouse press ({event.pos().x()}, {event.pos().y()})")
         pos = self.valid_point(event.pos())
 
         if pos is not None:

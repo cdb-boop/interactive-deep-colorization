@@ -6,9 +6,9 @@ import numpy as np
 import warnings
 
 
-class GUI_VIS(QWidget):
+class GUIVis(QWidget):
     update_color = pyqtSignal(QString)
-    
+
     def __init__(self, win_size: int = 256, scale: float = 2.0):
         QWidget.__init__(self)
         self.result = None
@@ -44,7 +44,7 @@ class GUI_VIS(QWidget):
 
     def is_valid_point(self, pos) -> bool:
         if not isinstance(pos, QPoint):
-            warnings.warn(f"'is_valid_point()' expected 'pos' of type 'QPoint'.", RuntimeWarning)
+            warnings.warn("GUIVis: 'pos' was not 'QPoint'", RuntimeWarning)
             return False
         else:
             x = pos.x()
@@ -61,8 +61,8 @@ class GUI_VIS(QWidget):
         x, y = self.scale_point(pos)
         if event.button() == Qt.LeftButton and self.is_valid_point(pos):  # click the point
             if self.result is not None:
-                color = self.result[y, x, :]  #
-                print('color', color)
+                color = self.result[y, x, :]
+                print(f"GUIVis: Color {color} at point ({pos.x()}, {pos.y()})")
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
         pass

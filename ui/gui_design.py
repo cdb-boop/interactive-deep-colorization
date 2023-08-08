@@ -69,7 +69,7 @@ class GUIDesign(QWidget):
         drawPadMenu.addWidget(self.bSave)
 
         drawPadLayout.addLayout(drawPadMenu)
-        self.visWidget = gui_vis.GUI_VIS(win_size=win_size, scale=win_size / float(load_size))
+        self.visWidget = gui_vis.GUIVis(win_size=win_size, scale=win_size / float(load_size))
         visWidgetLayout = self.AddWidget(self.visWidget, 'Result')
         mainLayout.addLayout(visWidgetLayout)
 
@@ -149,18 +149,18 @@ class GUIDesign(QWidget):
         self.drawWidget.enable_gray()
 
     def quit(self) -> None:
-        print('time spent = %3.3f' % (time.time() - self.start_t))
+        print(f"GUIDesign: time spent = {time.time() - self.start_t:3.3f}")
         self.close()
 
     def save(self) -> None:
-        print('time spent = %3.3f' % (time.time() - self.start_t))
+        print(f"GUIDesign: time spent = {time.time() - self.start_t:3.3f}")
         self.drawWidget.save_result()
 
     def load(self) -> None:
         self.drawWidget.load_image()
 
     def change_color(self) -> None:
-        print('change color')
+        print("GUIDesign: change color")
         self.drawWidget.change_color(use_suggest=True)
 
     def keyPressEvent(self, event: QKeyEvent) -> None:

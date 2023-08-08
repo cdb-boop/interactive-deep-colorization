@@ -70,10 +70,11 @@ class GUIPalette(QWidget):
             return -1
 
     def update_ui(self, color_id: int) -> None:
-        self.color_id = int(color_id)
+        assert isinstance(color_id, int), "GUIPalette: Expected 'color_id' of type 'int'"
+        self.color_id = color_id
         self.update()
         if color_id >= 0 and color_id < len(self.colors):
-            print('choose color (%d) type (%s)' % (color_id, type(color_id)))
+            print(f"GUIPalette: Selected palette index {color_id}")
             color = self.colors[color_id]
             self.update_color.emit(color)
             self.update()

@@ -32,10 +32,10 @@ class GUIGamut(QWidget):
 
     def is_valid_point(self, pos: QPoint) -> bool:
         if not isinstance(pos, QPoint):
-            warnings.warn(f"'is_valid_point()' expected 'pos' of type 'QPoint'.", RuntimeWarning)
+            warnings.warn(f"GUIGamut: 'pos' was not 'QPoint'", RuntimeWarning)
             return False
         if self.mask is None:
-            warnings.warn(f"GuiGamut 'mask' is type 'None'.", RuntimeWarning)
+            warnings.warn(f"GUIGamut: 'mask' was 'None'", RuntimeWarning)
             return False
         else:
             x = pos.x()

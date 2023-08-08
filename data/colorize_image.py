@@ -10,11 +10,11 @@ import warnings
 
 
 def create_temp_directory(path_template: str, N: float = 1e8) -> str:
-    print(path_template)
+    print(f"Path template: {path_template}")
     cur_path = path_template % np.random.randint(0, N)
     while(os.path.exists(cur_path)):
         cur_path = path_template % np.random.randint(0, N)
-    print('Creating directory: %s' % cur_path)
+    print(f"Creating directory: {cur_path}")
     os.mkdir(cur_path)
     return cur_path
 
@@ -48,7 +48,7 @@ class ColorizeImageBase():
         # net_forward can set this to False if they want
 
     def prep_net(self) -> None:
-        raise Exception('Should be implemented by base class')
+        raise Exception('ColorizeImageBase: Should be implemented by base class')
 
     # ***** Image prepping *****
     def load_image(self, input_path: str) -> None:
@@ -85,10 +85,10 @@ class ColorizeImageBase():
         # assumes self.img_l_mc has been set
 
         if(not self.img_l_set):
-            warnings.warn('I need to have an image!', RuntimeWarning)
+            warnings.warn('ColorizeImageBase: I need to have an image!', RuntimeWarning)
             return -1
         if(not self.net_set):
-            warnings.warn('I need to have a net!', RuntimeWarning)
+            warnings.warn('ColorizeImageBase: I need to have a net!', RuntimeWarning)
             return -1
 
         self.input_ab = input_ab
@@ -202,7 +202,7 @@ class ColorizeImageBase():
 
 class ColorizeImageTorch(ColorizeImageBase):
     def __init__(self, Xd: int = 256, maskcent: bool = False):
-        print('ColorizeImageTorch instantiated')
+        print("ColorizeImageTorch: PyTorch instantiated")
         ColorizeImageBase.__init__(self, Xd)
         self.l_norm = 1.
         self.ab_norm = 1.
@@ -218,8 +218,8 @@ class ColorizeImageTorch(ColorizeImageBase):
     def prep_net(self, gpu_id: int | None = None, path: str = '', dist: bool = False) -> None:
         import torch
         import models.pytorch.model as model
-        print('path = %s' % path)
-        print('Model set! dist mode? ', dist)
+        print(f"ColorizeImageTorch: path = {path}")
+        print(f"ColorizeImageTorch: dist mode = {dist}")
         self.net = model.SIGGRAPHGenerator(dist=dist)
         state_dict = torch.load(path)
         if hasattr(state_dict, '_metadata'):
@@ -294,7 +294,7 @@ class ColorizeImageTorchDist(ColorizeImageTorch):
 
     def prep_net(self, gpu_id: int | None = None, path: str = '', dist: bool = True, S: float = .2) -> None:
         ColorizeImageTorch.prep_net(self, gpu_id=gpu_id, path=path, dist=dist)
-        warnings.warn("Parameter 'S' is not used with PyTorch impliementation.", RuntimeWarning)
+        warnings.warn("ColorizeImageTorchDist: 'scale s' paramter is not currently used with PyTorch implementation", RuntimeWarning)
 
     def net_forward(self, input_ab: np.ndarray, input_mask: np.ndarray) -> int | np.ndarray:
         # INPUTS
@@ -326,7 +326,7 @@ class ColorizeImageTorchDist(ColorizeImageTorch):
         Call this after calling net_forward
         '''
         if not self.dist_ab_set:
-            warnings.warn('Need to set prediction first.', RuntimeWarning)
+            warnings.warn("ColorizeImageTorchDist: Need to set prediction first", RuntimeWarning)
             return 0
 
         # randomly sample from pdf
@@ -376,7 +376,7 @@ class ColorizeImageTorchDist(ColorizeImageTorch):
 
 class ColorizeImageCaffe(ColorizeImageBase):
     def __init__(self, Xd: int = 256):
-        print('ColorizeImageCaffe instantiated')
+        print("ColorizeImageCaffe: Caffe instantiated")
         ColorizeImageBase.__init__(self, Xd)
         self.l_norm = 1.
         self.ab_norm = 1.
@@ -393,7 +393,9 @@ class ColorizeImageCaffe(ColorizeImageBase):
     # ***** Net preparation *****
     def prep_net(self, gpu_id: int, prototxt_path: str = '', caffemodel_path: str = '') -> None:
         import caffe
-        print('gpu_id = %d, net_path = %s, model_path = %s' % (gpu_id, prototxt_path, caffemodel_path))
+        print(f"ColorizeImageCaffe: gpu_id {gpu_id}")
+        print(f"ColorizeImageCaffe: net_path {prototxt_path}")
+        print(f"ColorizeImageCaffe: model_path {caffemodel_path}")
         if gpu_id == -1:
             caffe.set_mode_cpu()
         else:
@@ -405,13 +407,13 @@ class ColorizeImageCaffe(ColorizeImageBase):
 
         # automatically set cluster centers
         if len(self.net.params[self.pred_ab_layer][0].data[...].shape) == 4 and self.net.params[self.pred_ab_layer][0].data[...].shape[1] == 313:
-            print('Setting ab cluster centers in layer: %s' % self.pred_ab_layer)
+            print(f"ColorizeImageCaffe: Setting ab cluster centers in layer: {self.pred_ab_layer}")
             self.net.params[self.pred_ab_layer][0].data[:, :, 0, 0] = self.pts_in_hull.T
 
         # automatically set upsampling kernel
         for layer in self.net._layer_names:
             if layer[-3:] == '_us':
-                print('Setting upsampling layer kernel: %s' % layer)
+                print(f"ColorizeImageCaffe: Setting upsampling layer kernel: {layer}")
                 self.net.params[layer][0].data[:, 0, :, :] = np.array(((.25, .5, .25, 0), (.5, 1., .5, 0), (.25, .5, .25, 0), (0, 0, 0, 0)))[np.newaxis, :, :]
 
     # ***** Call forward *****
@@ -484,7 +486,7 @@ class ColorizeImageCaffeDist(ColorizeImageCaffe):
     def prep_net(self, gpu_id: int, prototxt_path: str = '', caffemodel_path: str = '', S: float = .2) -> None:
         ColorizeImageCaffe.prep_net(self, gpu_id, prototxt_path=prototxt_path, caffemodel_path=caffemodel_path)
         self.S = S
-        self.net.params[self.scale_S_layer][0].data[...] = S
+        [self.scale_S_self.net.paramslayer][0].data[...] = S
 
     def net_forward(self, input_ab: np.ndarray, input_mask: np.ndarray) -> int | np.ndarray:
         # INPUTS
@@ -515,7 +517,7 @@ class ColorizeImageCaffeDist(ColorizeImageCaffe):
         Call this after calling net_forward
         '''
         if not self.dist_ab_set:
-            warnings.warn('Need to set prediction first.', RuntimeWarning)
+            warnings.warn("ColorizeImageCaffe: Need to set prediction first", RuntimeWarning)
             return 0
 
         # randomly sample from pdf
