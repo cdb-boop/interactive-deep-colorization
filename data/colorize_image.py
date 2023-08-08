@@ -218,6 +218,8 @@ class ColorizeImageTorch(ColorizeImageBase):
     def prep_net(self, gpu_id: int | None = None, path: str = '', dist: bool = False) -> None:
         import torch
         import models.pytorch.model as model
+        print(f"ColorizeImageTorch: path = {path}")
+        print(f"ColorizeImageTorch: dist mode = {dist}")
         self.net = model.SIGGRAPHGenerator(use_gpu=gpu_id is not None, dist=dist)
         state_dict = torch.load(path)
         if hasattr(state_dict, '_metadata'):
