@@ -3,8 +3,9 @@ import torch.nn as nn
 
 
 class SIGGRAPHGenerator(nn.Module):
-    def __init__(self, dist=False):
+    def __init__(self, use_gpu=False, dist=False):
         super(SIGGRAPHGenerator, self).__init__()
+        self.use_gpu = use_gpu
         self.dist = dist
         use_bias = True
         norm_layer = nn.BatchNorm2d
@@ -136,14 +137,15 @@ class SIGGRAPHGenerator(nn.Module):
         # input_B \in [-110, +110]
         # mask_B \in [0, +1.0]
 
-        input_A = torch.Tensor(input_A)[None, :, :, :]
-        input_B = torch.Tensor(input_B)[None, :, :, :]
-        mask_B = torch.Tensor(mask_B)[None, :, :, :]
+        if self.use_gpu:
+            input_A = torch.Tensor(input_A).cuda()[None, :, :, :]
+            input_B = torch.Tensor(input_B).cuda()[None, :, :, :]
+            mask_B = torch.Tensor(mask_B).cuda()[None, :, :, :]
+        else:
+            input_A = torch.Tensor(input_A)[None, :, :, :]
+            input_B = torch.Tensor(input_B)[None, :, :, :]
+            mask_B = torch.Tensor(mask_B)[None, :, :, :]
         mask_B = mask_B - maskcent
-        
-        # input_A = torch.Tensor(input_A).cuda()[None, :, :, :]
-        # input_B = torch.Tensor(input_B).cuda()[None, :, :, :]
-        # mask_B = torch.Tensor(mask_B).cuda()[None, :, :, :]
 
         conv1_2 = self.model1(torch.cat((input_A / 100., input_B / 110., mask_B), dim=1))
         conv2_2 = self.model2(conv1_2[:, :, ::2, ::2])

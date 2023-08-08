@@ -50,12 +50,12 @@ if __name__ == '__main__':
         print(f"[{arg}] = {getattr(args, arg)}")
     print("\n")
 
-    if args.cpu_mode:
-        args.gpu = -1
-
     args.win_size = int(args.win_size / 4.0) * 4  # make sure the width of the image can be divided by 4
 
     if args.backend == 'caffe':
+        if args.cpu_mode:
+            args.gpu = -1
+        
         # initialize the colorization model
         colorModel = CI.ColorizeImageCaffe(Xd=args.load_size)
         colorModel.prep_net(args.gpu, args.color_prototxt, args.color_caffemodel)
@@ -63,11 +63,14 @@ if __name__ == '__main__':
         distModel = CI.ColorizeImageCaffeDist(Xd=args.load_size)
         distModel.prep_net(args.gpu, args.dist_prototxt, args.dist_caffemodel)
     elif args.backend == 'pytorch':
+        if args.cpu_mode:
+            args.gpu = None
+
         colorModel = CI.ColorizeImageTorch(Xd=args.load_size,maskcent=args.pytorch_maskcent)
-        colorModel.prep_net(path=args.color_model)
+        colorModel.prep_net(args.gpu, path=args.color_model)
 
         distModel = CI.ColorizeImageTorchDist(Xd=args.load_size,maskcent=args.pytorch_maskcent)
-        distModel.prep_net(path=args.color_model, dist=True)
+        distModel.prep_net(args.gpu, path=args.color_model, dist=True)
     else:
         print(f"Backend type [{args.backend}] unknown")
         sys.exit()

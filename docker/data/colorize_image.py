@@ -218,7 +218,7 @@ class ColorizeImageTorch(ColorizeImageBase):
         import models.pytorch.model as model
         print('path = %s' % path)
         print('Model set! dist mode? ', dist)
-        self.net = model.SIGGRAPHGenerator(dist=dist)
+        self.net = model.SIGGRAPHGenerator(use_gpu=gpu_id is not None, dist=dist)
         state_dict = torch.load(path)
         if hasattr(state_dict, '_metadata'):
             del state_dict._metadata
