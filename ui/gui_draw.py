@@ -15,7 +15,7 @@ import sys
 import warnings
 
 class GUIDraw(QWidget):
-    update_color = pyqtSignal(QString)
+    update_color_indicator = pyqtSignal(QString)
     update_gamut = pyqtSignal(np.float64)
     suggest_colors = pyqtSignal(np.ndarray)
     used_colors = pyqtSignal(np.ndarray)
@@ -134,7 +134,7 @@ class GUIDraw(QWidget):
         is_predict = False
         snap_qcolor = self.calibrate_color(self.user_color, self.pos)
         self.color = snap_qcolor
-        self.update_color.emit(QString('background-color: %s' % self.color.name()))
+        self.update_color_indicator.emit(QString('background-color: %s' % self.color.name()))
 
         if self.ui_mode == 'point':
             if move_point:
@@ -226,7 +226,7 @@ class GUIDraw(QWidget):
         self.user_color = c
         snap_qcolor = self.calibrate_color(c, self.pos)
         self.color = snap_qcolor
-        self.update_color.emit(QString('background-color: %s' % self.color.name()))
+        self.update_color_indicator.emit(QString('background-color: %s' % self.color.name()))
         self.uiControl.update_color(snap_qcolor, self.user_color)
         self.compute_result()
 

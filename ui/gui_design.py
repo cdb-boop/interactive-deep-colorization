@@ -88,10 +88,10 @@ class GUIDesign(QWidget):
         self.visWidget.update()
         self.colorPush.clicked.connect(self.drawWidget.change_color)
         # color indicator
-        self.drawWidget.update_color.connect(self.colorPush.setStyleSheet)
+        self.drawWidget.update_color_indicator.connect(self.colorPush.setStyleSheet)
         # update result
         self.drawWidget.update_result.connect(self.visWidget.update_result)
-        self.drawWidget.update_result.connect(self.gamutWidget.set_ab)
+        self.drawWidget.update_gamut.connect(self.gamutWidget.set_gamut)
         self.visWidget.update_color.connect(self.colorPush.setStyleSheet)
         self.gamutWidget.update_color.connect(self.drawWidget.set_color)
         # update gamut

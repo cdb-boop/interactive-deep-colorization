@@ -24,6 +24,7 @@ class GUIGamut(QWidget):
         self.update()
 
     def set_ab(self, color: np.ndarray) -> None:
+        assert color.shape == (3, ), "GUIGamut.set_ab(...) expects color of shape(3,)"
         self.color = color
         self.lab = lab_gamut.rgb2lab_1d(self.color)
         x, y = self.ab_grid.ab2xy(self.lab[1], self.lab[2])
@@ -79,7 +80,6 @@ class GUIGamut(QWidget):
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
         pos = event.pos()
-
         if event.button() == Qt.LeftButton and self.is_valid_point(pos):  # click the point
             self.update_ui(pos)
             self.mouseClicked = True
