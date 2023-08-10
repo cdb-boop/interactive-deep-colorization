@@ -11,6 +11,7 @@ except ImportError:
     import pickle
 from typing import Any
 import warnings
+from PyQt5.QtGui import QColor
 
 
 def debug_trace() -> None:
@@ -110,3 +111,9 @@ def grid_vis(X: Any, nh: int, nw: int) -> Any:  # [buggy]
         img[j * h:j * h + h, i * w:i * w + w, :] = x
     img = np.squeeze(img)
     return img
+
+def ndarray_to_qcolor(a: np.ndarray) -> QColor:
+    return QColor(a[0], a[1], a[2])
+
+def qcolor_to_ndarray(c: QColor) -> np.ndarray:
+    return np.array((c.red(), c.green(), c.blue())).astype('uint8')

@@ -124,7 +124,7 @@ class UIControl:
 
         if self.userEdit is None:
             self.userEdit = PointEdit(self.win_size, self.load_size, self.img_size)
-            print(f"UIControl: Added user edit index {len(self.userEdits)}.\n")
+            print(f"UIControl: Added user edit at index {len(self.userEdits)}.\n")
             self.userEdits.append(self.userEdit)
             self.userEdit.add(pnt, color, userColor, width, self.ui_count)
             return userColor, width, isNew

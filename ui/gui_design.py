@@ -1,10 +1,12 @@
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QGroupBox, QPushButton, QCheckBox
 from PyQt5.QtGui import QKeyEvent
 from PyQt5.QtCore import Qt
+import numpy as np
 from . import gui_draw
-from . import gui_vis
+from . import gui_visualize
 from . import gui_gamut
 from . import gui_palette
+from . import utils
 from data import colorize_image
 import time
 
@@ -31,18 +33,20 @@ class GUIDesign(QWidget):
         colorLayout.addLayout(gamutLayout)
         mainLayout.addLayout(colorLayout)
 
-        # palette
-        self.customPalette = gui_palette.GUIPalette(grid_sz=(10, 1))
-        self.usedPalette = gui_palette.GUIPalette(grid_sz=(10, 1))
-        cpLayout = self.AddWidget(self.customPalette, 'Suggested colors')
+        # palettes
+        self.suggestedPalette = gui_palette.GUIPalette(grid_sz=(10, 1))
+        self.recentlyUsedPalette = gui_palette.GUIPalette(grid_sz=(10, 1))
+        cpLayout = self.AddWidget(self.suggestedPalette, 'Suggested colors')
         colorLayout.addLayout(cpLayout)
-        upLayout = self.AddWidget(self.usedPalette, 'Recently used colors')
+        upLayout = self.AddWidget(self.recentlyUsedPalette, 'Recently used colors')
         colorLayout.addLayout(upLayout)
 
+        # color indicator
+        # TODO: factor out to GUIColorIndicator class in gui_color_indicator.py
         self.colorPush = QPushButton()  # to visualize the selected color
-        self.colorPush.setFixedWidth(self.customPalette.width())
+        self.colorPush.setFixedWidth(self.suggestedPalette.width())
         self.colorPush.setFixedHeight(25)
-        self.colorPush.setStyleSheet("background-color: grey")
+        self.color_indicator_reset()
         colorPushLayout = self.AddWidget(self.colorPush, 'Color')
         colorLayout.addLayout(colorPushLayout)
         colorLayout.setAlignment(Qt.AlignTop)
@@ -69,7 +73,7 @@ class GUIDesign(QWidget):
         drawPadMenu.addWidget(self.bSave)
 
         drawPadLayout.addLayout(drawPadMenu)
-        self.visWidget = gui_vis.GUIVis(win_size=win_size, scale=win_size / float(load_size))
+        self.visWidget = gui_visualize.GUIVisualize(win_size=win_size, scale=win_size / float(load_size))
         visWidgetLayout = self.AddWidget(self.visWidget, 'Result')
         mainLayout.addLayout(visWidgetLayout)
 
@@ -86,27 +90,31 @@ class GUIDesign(QWidget):
 
         self.drawWidget.update()
         self.visWidget.update()
-        self.colorPush.clicked.connect(self.drawWidget.change_color)
-        # color indicator
-        self.drawWidget.update_color_indicator.connect(self.colorPush.setStyleSheet)
-        # update result
-        self.drawWidget.update_result.connect(self.visWidget.update_result)
-        self.drawWidget.update_gamut.connect(self.gamutWidget.set_gamut)
-        self.visWidget.update_color.connect(self.colorPush.setStyleSheet)
-        self.gamutWidget.update_color.connect(self.drawWidget.set_color)
-        # update gamut
-        self.drawWidget.update_gamut.connect(self.gamutWidget.set_gamut)
-        self.drawWidget.update_ab.connect(self.gamutWidget.set_ab)
-        self.gamutWidget.update_color.connect(self.drawWidget.set_color)
-        # connect palette
-        self.drawWidget.suggest_colors.connect(self.customPalette.set_colors)
-        # self.drawWidget.change_color_id.connect(self.customPalette.update_color_id)
-        self.customPalette.update_color.connect(self.drawWidget.set_color)
-        self.customPalette.update_color.connect(self.gamutWidget.set_ab)
 
-        self.drawWidget.used_colors.connect(self.usedPalette.set_colors)
-        self.usedPalette.update_color.connect(self.drawWidget.set_color)
-        self.usedPalette.update_color.connect(self.gamutWidget.set_ab)
+        # color indicator
+        self.drawWidget.selected_color_updated.connect(self.set_indicator_color)
+
+        # update colorized image visualization
+        self.drawWidget.colorized_image_generated.connect(self.visWidget.set_image)
+        self.visWidget.color_clicked.connect(self.set_indicator_color)
+        self.visWidget.color_clicked.connect(self.gamutWidget.set_ab)
+        self.visWidget.color_clicked.connect(self.drawWidget.set_color)
+        self.visWidget.color_clicked.connect(self.set_indicator_color)
+
+        # update gamut
+        self.drawWidget.gamut_changed.connect(self.gamutWidget.set_gamut)
+        self.drawWidget.gamut_ab_changed.connect(self.gamutWidget.set_ab)
+        self.gamutWidget.color_selected.connect(self.drawWidget.set_color)
+
+        # connect palette
+        self.drawWidget.suggested_colors_changed.connect(self.suggestedPalette.set_colors)
+        self.suggestedPalette.color_selected.connect(self.drawWidget.set_color)
+        self.suggestedPalette.color_selected.connect(self.gamutWidget.set_ab)
+
+        self.drawWidget.recently_used_colors_changed.connect(self.recentlyUsedPalette.set_colors)
+        self.recentlyUsedPalette.color_selected.connect(self.drawWidget.set_color)
+        self.recentlyUsedPalette.color_selected.connect(self.gamutWidget.set_ab)
+
         # menu events
         self.bGray.setChecked(True)
         self.bRestart.clicked.connect(self.reset)
@@ -139,11 +147,11 @@ class GUIDesign(QWidget):
         print('============================reset all=========================================')
         self.visWidget.reset()
         self.gamutWidget.reset()
-        self.customPalette.reset()
-        self.usedPalette.reset()
+        self.suggestedPalette.reset()
+        self.recentlyUsedPalette.reset()
         self.drawWidget.reset()
+        self.color_indicator_reset()
         self.update()
-        self.colorPush.setStyleSheet("background-color: grey")
 
     def enable_gray(self) -> None:
         self.drawWidget.enable_gray()
@@ -159,9 +167,12 @@ class GUIDesign(QWidget):
     def load(self) -> None:
         self.drawWidget.load_image()
 
-    def change_color(self) -> None:
-        print("GUIDesign: change color")
-        self.drawWidget.change_color(use_suggest=True)
+    def color_indicator_reset(self):
+        self.set_indicator_color(np.array((0,0,0)).astype('uint8'))
+
+    def set_indicator_color(self, color: np.ndarray):
+        color = utils.ndarray_to_qcolor(color)
+        self.colorPush.setStyleSheet(f"background-color: {color.name()}")
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.key() == Qt.Key_R:

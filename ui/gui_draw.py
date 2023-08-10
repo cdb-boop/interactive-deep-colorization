@@ -3,8 +3,8 @@ import cv2
 from PyQt5.QtWidgets import QWidget, QApplication, QFileDialog
 from PyQt5.QtGui import QColor, QPainter, QPaintEvent, QImage, QWheelEvent, QMouseEvent
 from PyQt5.QtCore import Qt, pyqtSignal, QSize, QPoint
-QString = str
 from .ui_control import UIControl
+from . import utils
 
 from data import lab_gamut, colorize_image
 from skimage import color
@@ -15,12 +15,13 @@ import sys
 import warnings
 
 class GUIDraw(QWidget):
-    update_color_indicator = pyqtSignal(QString)
-    update_gamut = pyqtSignal(np.float64)
-    suggest_colors = pyqtSignal(np.ndarray)
-    used_colors = pyqtSignal(np.ndarray)
-    update_ab = pyqtSignal(np.ndarray)
-    update_result = pyqtSignal(np.ndarray)
+    selected_color_updated = pyqtSignal(np.ndarray)
+
+    gamut_changed = pyqtSignal(np.float64)
+    suggested_colors_changed = pyqtSignal(np.ndarray)
+    recently_used_colors_changed = pyqtSignal(np.ndarray)
+    gamut_ab_changed = pyqtSignal(np.ndarray)
+    colorized_image_generated = pyqtSignal(np.ndarray)
 
     def __init__(
             self, 
@@ -134,7 +135,7 @@ class GUIDraw(QWidget):
         is_predict = False
         snap_qcolor = self.calibrate_color(self.user_color, self.pos)
         self.color = snap_qcolor
-        self.update_color_indicator.emit(QString('background-color: %s' % self.color.name()))
+        self.selected_color_updated.emit(utils.qcolor_to_ndarray(self.color))
 
         if self.ui_mode == 'point':
             if move_point:
@@ -144,10 +145,9 @@ class GUIDraw(QWidget):
                 if isNew:
                     is_predict = True
                     # self.predict_color()
-
-        if self.ui_mode == 'stroke':
+        elif self.ui_mode == 'stroke':
             self.uiControl.addStroke(self.prev_pos, self.pos, snap_qcolor, self.user_color, self.brushWidth)
-        if self.ui_mode == 'erase':
+        elif self.ui_mode == 'erase':
             isRemoved = self.uiControl.erasePoint(self.pos)
             if isRemoved:
                 is_predict = True
@@ -162,7 +162,7 @@ class GUIDraw(QWidget):
         self.color = None
         self.uiControl.reset()
         self.init_color()
-        self.compute_result()
+        self.compute_colorized_image()
         self.predict_color()
         self.update()
 
@@ -175,60 +175,66 @@ class GUIDraw(QWidget):
         if pnt is None:
             warnings.warn(f"GUIDraw: 'pnt' was 'None'", RuntimeWarning)
             return None
+
+        if pnt.x() >= self.dw and pnt.y() >= self.dh and pnt.x() < self.win_size - self.dw and pnt.y() < self.win_size - self.dh:
+            x = int(np.round(pnt.x()))
+            y = int(np.round(pnt.y()))
+            return QPoint(x, y)
         else:
-            if pnt.x() >= self.dw and pnt.y() >= self.dh and pnt.x() < self.win_size - self.dw and pnt.y() < self.win_size - self.dh:
-                x = int(np.round(pnt.x()))
-                y = int(np.round(pnt.y()))
-                return QPoint(x, y)
-            else:
-                warnings.warn(f"GUIDraw: Point ({pnt.x()}, {pnt.y()}) is out of bounds", RuntimeWarning)
-                return None
+            warnings.warn(f"GUIDraw: Point ({pnt.x()}, {pnt.y()}) is out of bounds", RuntimeWarning)
+            return None
 
     def init_color(self) -> None:
         self.user_color = QColor(128, 128, 128)  # default color red
         self.color = self.user_color
 
-    def change_color(self, pos: QPoint) -> None:
+    def signal_ui_changes(self, pos: QPoint) -> None:
         if not isinstance(pos, QPoint):
             warnings.warn("GUIDraw: 'pos' was not 'QPoint'", RuntimeWarning)
             return
-        
+
         x, y = self.scale_point(pos)
         L = self.im_lab[y, x, 0]
-        self.update_gamut.emit(L)
+        self.gamut_changed.emit(L)
+
         rgb_colors = self.suggest_color(h=y, w=x, K=9)
         rgb_colors[-1, :] = 0.5
+        self.suggested_colors_changed.emit(rgb_colors)
 
-        self.suggest_colors.emit(rgb_colors)
-        used_colors = self.uiControl.get_recently_used_colors()
-        if used_colors is not None:
-            self.used_colors.emit(used_colors)
+        recently_used_colors = self.uiControl.get_recently_used_colors()
+        if recently_used_colors is not None:
+            self.recently_used_colors_changed.emit(recently_used_colors)
+
         snap_color = self.calibrate_color(self.user_color, pos)
-        c = np.array((snap_color.red(), snap_color.green(), snap_color.blue()), np.uint8)
-
-        self.update_ab.emit(c)
+        c = utils.qcolor_to_ndarray(snap_color)
+        self.gamut_ab_changed.emit(c)
 
     def calibrate_color(self, c: QColor, pos: QPoint) -> QColor:
         x, y = self.scale_point(pos)
 
         # snap color based on L color
-        color_array = np.array((c.red(), c.green(), c.blue())).astype('uint8')
+        color_array = utils.qcolor_to_ndarray(c)
         mean_L = self.im_l[y, x]
         snap_color = lab_gamut.snap_ab(mean_L, color_array)
-        snap_qcolor = QColor(snap_color[0], snap_color[1], snap_color[2])
+        snap_qcolor = utils.ndarray_to_qcolor(snap_color)
         return snap_qcolor
 
     def set_color(self, c_rgb: np.ndarray) -> None:
         if self.pos is None:
             warnings.warn("GUIDraw: 'c_rgb' is 'None'", RuntimeWarning)
             return
-        c = QColor(c_rgb[0], c_rgb[1], c_rgb[2])
+
+        print("GUIDraw: Set color")
+
+        c = utils.ndarray_to_qcolor(c_rgb)
         self.user_color = c
+        
         snap_qcolor = self.calibrate_color(c, self.pos)
         self.color = snap_qcolor
-        self.update_color_indicator.emit(QString('background-color: %s' % self.color.name()))
+
+        self.selected_color_updated.emit(utils.qcolor_to_ndarray(self.color))
         self.uiControl.update_color(snap_qcolor, self.user_color)
-        self.compute_result()
+        self.compute_colorized_image()
 
     def erase(self) -> None:
         self.eraseMode = not self.eraseMode
@@ -290,7 +296,7 @@ class GUIDraw(QWidget):
             warnings.warn("GUIDraw: No color suggestion returned", RuntimeWarning)
             return None
 
-    def compute_result(self) -> None:
+    def compute_colorized_image(self) -> None:
         im, mask = self.uiControl.get_input()
         im_mask0 = mask > 0.0
         self.im_mask0 = im_mask0.transpose((2, 0, 1))
@@ -303,7 +309,7 @@ class GUIDraw(QWidget):
         pred_lab = np.concatenate((self.l_win[..., np.newaxis], ab_win), axis=2)
         pred_rgb = (np.clip(color.lab2rgb(pred_lab), 0, 1) * 255).astype('uint8')
         self.result = pred_rgb
-        self.update_result.emit(self.result)
+        self.colorized_image_generated.emit(self.result)
         self.update()
 
     def paintEvent(self, event: QPaintEvent) -> None:
@@ -330,41 +336,41 @@ class GUIDraw(QWidget):
         self.update_ui(move_point=True)
         self.update()
 
-    def is_same_point(self, pos1: QPoint, pos2: QPoint) -> bool:
-        if pos1 is None or pos2 is None:
-            warnings.warn(f"GUIDraw: Attempted to compare point with 'None' type", RuntimeWarning)
-            return False
-        dx = pos1.x() - pos2.x()
-        dy = pos1.y() - pos2.y()
-        d = dx * dx + dy * dy
-        # print(f"GUIDraw: Distance between points = {d}")
-        return d < 25
+    #def is_same_point(self, pos1: QPoint, pos2: QPoint) -> bool:
+    #    if pos1 is None or pos2 is None:
+    #        warnings.warn(f"GUIDraw: Attempted to compare point with 'None' type", RuntimeWarning)
+    #        return False
+    #    dx = pos1.x() - pos2.x()
+    #    dy = pos1.y() - pos2.y()
+    #    d = dx * dx + dy * dy
+    #    # print(f"GUIDraw: Distance between points = {d}")
+    #    return d < 25
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
         print(f"GUIDraw: Mouse press ({event.pos().x()}, {event.pos().y()})")
         pos = self.valid_point(event.pos())
+        if pos is None:
+            return
 
-        if pos is not None:
-            if event.button() == Qt.LeftButton:
-                self.pos = pos
-                self.ui_mode = 'point'
-                self.change_color(pos)
-                self.update_ui(move_point=False)
-                self.compute_result()
-
-            if event.button() == Qt.RightButton:
-                # draw the stroke
-                self.pos = pos
-                self.ui_mode = 'erase'
-                self.update_ui(move_point=False)
-                self.compute_result()
+        if event.button() == Qt.LeftButton:
+            self.pos = pos
+            self.ui_mode = 'point'
+            self.update_ui(move_point=False)
+            self.signal_ui_changes(pos)
+            self.compute_colorized_image()
+        elif event.button() == Qt.RightButton:
+            # draw the stroke
+            self.pos = pos
+            self.ui_mode = 'erase'
+            self.update_ui(move_point=False)
+            self.compute_colorized_image()
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
         self.pos = self.valid_point(event.pos())
         if self.pos is not None:
             if self.ui_mode == 'point':
                 self.update_ui(move_point=True)
-                self.compute_result()
+                self.compute_colorized_image()
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         pass

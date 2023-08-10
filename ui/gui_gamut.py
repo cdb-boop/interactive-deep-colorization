@@ -8,7 +8,7 @@ import warnings
 
 
 class GUIGamut(QWidget):
-    update_color = pyqtSignal(np.ndarray)
+    color_selected = pyqtSignal(np.ndarray)
 
     def __init__(self, gamut_size: int = 110):
         QWidget.__init__(self)
@@ -38,13 +38,13 @@ class GUIGamut(QWidget):
         if self.mask is None:
             warnings.warn(f"GUIGamut: 'mask' was 'None'", RuntimeWarning)
             return False
+
+        x = pos.x()
+        y = pos.y()
+        if x >= 0 and y >= 0 and x < self.win_size and y < self.win_size:
+            return self.mask[y, x].astype(bool)
         else:
-            x = pos.x()
-            y = pos.y()
-            if x >= 0 and y >= 0 and x < self.win_size and y < self.win_size:
-                return self.mask[y, x].astype(bool)
-            else:
-                return False
+            return False
 
     def update_ui(self, pos: QPoint) -> None:
         self.pos = pos
@@ -53,7 +53,7 @@ class GUIGamut(QWidget):
         L = self.l_in
         lab = np.array([L, a, b])
         color = lab_gamut.lab2rgb_1d(lab, clip=True, dtype='uint8')
-        self.update_color.emit(color)
+        self.color_selected.emit(color)
         self.update()
 
     def paintEvent(self, event: QPaintEvent) -> None:
