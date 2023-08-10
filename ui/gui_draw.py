@@ -15,12 +15,10 @@ import sys
 import warnings
 
 class GUIDraw(QWidget):
-    selected_color_updated = pyqtSignal(np.ndarray)
-
     gamut_changed = pyqtSignal(np.float64)
     suggested_colors_changed = pyqtSignal(np.ndarray)
     recently_used_colors_changed = pyqtSignal(np.ndarray)
-    gamut_ab_changed = pyqtSignal(np.ndarray)
+    selected_color_changed = pyqtSignal(np.ndarray)
     colorized_image_generated = pyqtSignal(np.ndarray)
 
     def __init__(
@@ -135,7 +133,7 @@ class GUIDraw(QWidget):
         is_predict = False
         snap_qcolor = self.calibrate_color(self.user_color, self.pos)
         self.color = snap_qcolor
-        self.selected_color_updated.emit(utils.qcolor_to_ndarray(self.color))
+        self.selected_color_changed.emit(utils.qcolor_to_ndarray(self.color))
 
         if self.ui_mode == 'point':
             if move_point:
@@ -207,7 +205,7 @@ class GUIDraw(QWidget):
 
         snap_color = self.calibrate_color(self.user_color, pos)
         c = utils.qcolor_to_ndarray(snap_color)
-        self.gamut_ab_changed.emit(c)
+        self.selected_color_changed.emit(c)
 
     def calibrate_color(self, c: QColor, pos: QPoint) -> QColor:
         x, y = self.scale_point(pos)
@@ -232,7 +230,6 @@ class GUIDraw(QWidget):
         snap_qcolor = self.calibrate_color(c, self.pos)
         self.color = snap_qcolor
 
-        self.selected_color_updated.emit(utils.qcolor_to_ndarray(self.color))
         self.uiControl.update_color(snap_qcolor, self.user_color)
         self.compute_colorized_image()
 

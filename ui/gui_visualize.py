@@ -2,8 +2,6 @@ from PyQt5.QtWidgets import QWidget
 from PyQt5.QtGui import QPainter, QColor, QImage, QPaintEvent, QMouseEvent
 from PyQt5.QtCore import Qt, pyqtSignal, QSize
 import numpy as np
-import warnings
-from . import utils
 
 
 class GUIVisualize(QWidget):

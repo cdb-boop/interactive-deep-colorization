@@ -34,9 +34,9 @@ class GUIDesign(QWidget):
         mainLayout.addLayout(colorLayout)
 
         # palettes
-        self.suggestedPalette = gui_palette.GUIPalette(grid_sz=(10, 1))
+        self.suggestionPalette = gui_palette.GUIPalette(grid_sz=(10, 1))
         self.recentlyUsedPalette = gui_palette.GUIPalette(grid_sz=(10, 1))
-        cpLayout = self.AddWidget(self.suggestedPalette, 'Suggested colors')
+        cpLayout = self.AddWidget(self.suggestionPalette, 'Suggested colors')
         colorLayout.addLayout(cpLayout)
         upLayout = self.AddWidget(self.recentlyUsedPalette, 'Recently used colors')
         colorLayout.addLayout(upLayout)
@@ -44,7 +44,7 @@ class GUIDesign(QWidget):
         # color indicator
         # TODO: factor out to GUIColorIndicator class in gui_color_indicator.py
         self.colorPush = QPushButton()  # to visualize the selected color
-        self.colorPush.setFixedWidth(self.suggestedPalette.width())
+        self.colorPush.setFixedWidth(self.suggestionPalette.width())
         self.colorPush.setFixedHeight(25)
         self.color_indicator_reset()
         colorPushLayout = self.AddWidget(self.colorPush, 'Color')
@@ -91,29 +91,34 @@ class GUIDesign(QWidget):
         self.drawWidget.update()
         self.visWidget.update()
 
-        # color indicator
-        self.drawWidget.selected_color_updated.connect(self.set_indicator_color)
+        # update draw pad
+        self.visWidget.color_clicked.connect(self.drawWidget.set_color)
+        self.gamutWidget.color_selected.connect(self.drawWidget.set_color)
+        self.suggestionPalette.color_selected.connect(self.drawWidget.set_color)
+        self.recentlyUsedPalette.color_selected.connect(self.drawWidget.set_color)
 
         # update colorized image visualization
         self.drawWidget.colorized_image_generated.connect(self.visWidget.set_image)
-        self.visWidget.color_clicked.connect(self.set_indicator_color)
-        self.visWidget.color_clicked.connect(self.gamutWidget.set_ab)
-        self.visWidget.color_clicked.connect(self.drawWidget.set_color)
-        self.visWidget.color_clicked.connect(self.set_indicator_color)
 
         # update gamut
         self.drawWidget.gamut_changed.connect(self.gamutWidget.set_gamut)
-        self.drawWidget.gamut_ab_changed.connect(self.gamutWidget.set_ab)
-        self.gamutWidget.color_selected.connect(self.drawWidget.set_color)
-
-        # connect palette
-        self.drawWidget.suggested_colors_changed.connect(self.suggestedPalette.set_colors)
-        self.suggestedPalette.color_selected.connect(self.drawWidget.set_color)
-        self.suggestedPalette.color_selected.connect(self.gamutWidget.set_ab)
-
-        self.drawWidget.recently_used_colors_changed.connect(self.recentlyUsedPalette.set_colors)
-        self.recentlyUsedPalette.color_selected.connect(self.drawWidget.set_color)
+        self.drawWidget.selected_color_changed.connect(self.gamutWidget.set_ab)
+        self.visWidget.color_clicked.connect(self.gamutWidget.set_ab)
+        self.suggestionPalette.color_selected.connect(self.gamutWidget.set_ab)
         self.recentlyUsedPalette.color_selected.connect(self.gamutWidget.set_ab)
+
+        # suggestion palette
+        self.drawWidget.suggested_colors_changed.connect(self.suggestionPalette.set_colors)
+
+        # recently used palette
+        self.drawWidget.recently_used_colors_changed.connect(self.recentlyUsedPalette.set_colors)
+
+        # update color indicator
+        self.drawWidget.selected_color_changed.connect(self.set_indicator_color)
+        self.visWidget.color_clicked.connect(self.set_indicator_color)
+        self.gamutWidget.color_selected.connect(self.set_indicator_color)
+        self.suggestionPalette.color_selected.connect(self.set_indicator_color)
+        self.recentlyUsedPalette.color_selected.connect(self.set_indicator_color)
 
         # menu events
         self.bGray.setChecked(True)
@@ -147,7 +152,7 @@ class GUIDesign(QWidget):
         print('============================reset all=========================================')
         self.visWidget.reset()
         self.gamutWidget.reset()
-        self.suggestedPalette.reset()
+        self.suggestionPalette.reset()
         self.recentlyUsedPalette.reset()
         self.drawWidget.reset()
         self.color_indicator_reset()
