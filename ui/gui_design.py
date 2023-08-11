@@ -14,8 +14,8 @@ import time
 class GUIDesign(QWidget):
     def __init__(
             self, 
-            color_model: colorize_image.ColorizeImageTorch, 
-            dist_model: colorize_image.ColorizeImageTorchDist | None = None, 
+            color_model: colorize_image.ColorizeImageTorch | colorize_image.ColorizeImageCaffe, 
+            dist_model: colorize_image.ColorizeImageTorchDist | colorize_image.ColorizeImageCaffeDist | None = None, 
             img_file: str | None = None, 
             load_size: int = 256, 
             win_size: int = 256):

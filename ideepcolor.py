@@ -1,15 +1,14 @@
 from __future__ import print_function
 import sys
 import argparse
-#import qdarkstyle
+import importlib
+import importlib.util
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import Qt
 from ui import gui_design
 from data import colorize_image as CI
 
 sys.path.append('./caffe_files')
-from inspect import getmembers, isfunction
 
 
 def parse_args() -> argparse.Namespace:
@@ -38,6 +37,9 @@ def parse_args() -> argparse.Namespace:
     # ***** DEPRECATED *****
     parser.add_argument('--load_size', dest='load_size', help='image size', type=int, default=256)
 
+    # extra parameters
+    parser.add_argument('--dark_style', dest='dark_style', help='use qdarkstyle ui', action='store_true')
+
     args = parser.parse_args()
     return args
 
@@ -45,32 +47,29 @@ def parse_args() -> argparse.Namespace:
 if __name__ == '__main__':
     args = parse_args()
 
-    print("Args:")
     for arg in vars(args):
         print(f"[{arg}] = {getattr(args, arg)}")
     print("\n")
 
     args.win_size = int(args.win_size / 4.0) * 4  # make sure the width of the image can be divided by 4
 
+    # initialize the colorization model
     if args.backend == 'caffe':
         if args.cpu_mode:
             args.gpu = -1
-        
-        # initialize the colorization model
-        colorModel = CI.ColorizeImageCaffe(Xd=args.load_size)
+        colorModel = CI.ColorizeImageCaffe(args.load_size)
         colorModel.prep_net(args.gpu, args.color_prototxt, args.color_caffemodel)
 
-        distModel = CI.ColorizeImageCaffeDist(Xd=args.load_size)
+        distModel = CI.ColorizeImageCaffeDist(args.load_size)
         distModel.prep_net(args.gpu, args.dist_prototxt, args.dist_caffemodel)
     elif args.backend == 'pytorch':
         if args.cpu_mode:
             args.gpu = None
+        colorModel = CI.ColorizeImageTorch(args.load_size,args.pytorch_maskcent)
+        colorModel.prep_net(args.gpu, args.color_model)
 
-        colorModel = CI.ColorizeImageTorch(Xd=args.load_size,maskcent=args.pytorch_maskcent)
-        colorModel.prep_net(args.gpu, path=args.color_model)
-
-        distModel = CI.ColorizeImageTorchDist(Xd=args.load_size,maskcent=args.pytorch_maskcent)
-        distModel.prep_net(args.gpu, path=args.color_model, dist=True)
+        distModel = CI.ColorizeImageTorchDist(args.load_size,args.pytorch_maskcent)
+        distModel.prep_net(args.gpu, args.color_model, True)
     else:
         print(f"Backend type [{args.backend}] unknown")
         sys.exit()
@@ -78,8 +77,10 @@ if __name__ == '__main__':
 
     # initialize application
     app = QApplication(sys.argv)
-    #app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyqt5'))  # comment this if you do not like dark stylesheet
-    window = gui_design.GUIDesign(color_model=colorModel, dist_model=distModel, img_file=args.image_file, load_size=args.load_size, win_size=args.win_size)
+    if args.dark_style and importlib.util.find_spec("qdarkstyle") is not None:
+        qdarkstyle = importlib.import_module("qdarkstyle")
+        app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyqt5'))
+    window = gui_design.GUIDesign(colorModel, distModel, args.image_file, args.load_size, args.win_size)
     app.setWindowIcon(QIcon('imgs/logo.png'))  # load logo
     window.setWindowTitle('iColor')
     window.setWindowFlags(window.windowFlags())
