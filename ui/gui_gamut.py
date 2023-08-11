@@ -4,11 +4,12 @@ from PyQt5.QtGui import QPainter, QPen, QImage, QPaintEvent, QMouseEvent
 from PyQt5.QtCore import Qt, pyqtSignal, QPointF, QPoint, QSize
 from data import lab_gamut
 import numpy as np
+import numpy.typing as npt
 import warnings
 
 
 class GUIGamut(QWidget):
-    color_selected = pyqtSignal(np.ndarray)
+    color_selected = pyqtSignal(np.ndarray)  # 1x3 uint8
 
     def __init__(self, gamut_size: int = 110):
         QWidget.__init__(self)
@@ -17,8 +18,10 @@ class GUIGamut(QWidget):
         self.setFixedSize(self.win_size, self.win_size)
         self.ab_grid = lab_gamut.abGrid(gamut_size=gamut_size, D=1)
         self.reset()
+        self.mask: None | npt.NDArray[np.bool_] = None
+        self.pos: None | QPoint = None
 
-    def set_gamut(self, l_in: np.float64 = 50) -> None:
+    def set_gamut(self, l_in: np.float64 = np.float64(50)) -> None:
         self.l_in = l_in
         self.ab_map, self.mask = self.ab_grid.update_gamut(l_in=l_in)
         self.update()
@@ -28,7 +31,9 @@ class GUIGamut(QWidget):
         self.color = color
         self.lab = lab_gamut.rgb2lab_1d(self.color)
         x, y = self.ab_grid.ab2xy(self.lab[1], self.lab[2])
-        self.pos = QPointF(x, y)
+        h = self.win_size // 2
+        x, y = int(x - h) + h, int(y - h) + h  # round towards center
+        self.pos = QPoint(x, y)
         self.update()
 
     def is_valid_point(self, pos: QPoint) -> bool:
@@ -60,17 +65,17 @@ class GUIGamut(QWidget):
         painter = QPainter()
         painter.begin(self)
         painter.setRenderHint(QPainter.Antialiasing)
-        painter.fillRect(event.rect(), Qt.white)
+        painter.fillRect(event.rect(), Qt.GlobalColor.white)
         if self.ab_map is not None:
             ab_map = cv2.resize(self.ab_map, (self.win_size, self.win_size))
             qImg = QImage(ab_map.tostring(), self.win_size, self.win_size, QImage.Format_RGB888)
             painter.drawImage(0, 0, qImg)
 
-        painter.setPen(QPen(Qt.gray, 3, Qt.DotLine, cap=Qt.RoundCap, join=Qt.RoundJoin))
+        painter.setPen(QPen(Qt.GlobalColor.gray, 3, Qt.PenStyle.DotLine, cap=Qt.PenCapStyle.RoundCap, join=Qt.PenJoinStyle.RoundJoin))
         painter.drawLine(self.win_size // 2, 0, self.win_size // 2, self.win_size)
         painter.drawLine(0, self.win_size // 2, self.win_size, self.win_size // 2)
         if self.pos is not None:
-            painter.setPen(QPen(Qt.black, 2, Qt.SolidLine, cap=Qt.RoundCap, join=Qt.RoundJoin))
+            painter.setPen(QPen(Qt.GlobalColor.black, 2, Qt.PenStyle.SolidLine, cap=Qt.PenCapStyle.RoundCap, join=Qt.PenJoinStyle.RoundJoin))
             w = 5
             x = self.pos.x()
             y = self.pos.y()
@@ -80,7 +85,7 @@ class GUIGamut(QWidget):
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
         pos = event.pos()
-        if event.button() == Qt.LeftButton and self.is_valid_point(pos):  # click the point
+        if event.button() == Qt.MouseButton.LeftButton and self.is_valid_point(pos):  # click the point
             self.update_ui(pos)
             self.mouseClicked = True
 

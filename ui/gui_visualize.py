@@ -5,7 +5,7 @@ import numpy as np
 
 
 class GUIVisualize(QWidget):
-    color_clicked = pyqtSignal(np.ndarray)
+    color_selected = pyqtSignal(np.ndarray)  # 1x3 uint8
 
     def __init__(self, win_size: int = 256, scale: float = 2.0):
         QWidget.__init__(self)
@@ -22,7 +22,7 @@ class GUIVisualize(QWidget):
         painter.fillRect(event.rect(), QColor(49, 54, 49))
         if self.image is not None:
             h, w, c = self.image.shape
-            qImg = QImage(self.image.tostring(), w, h, QImage.Format_RGB888)
+            qImg = QImage(self.image.tobytes(), w, h, QImage.Format_RGB888)
             dw = int((self.win_width - w) // 2)
             dh = int((self.win_height - h) // 2)
             painter.drawImage(dw, dh, qImg)
@@ -44,7 +44,7 @@ class GUIVisualize(QWidget):
         if self.image is None:
             return
 
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             pos = event.pos()
             x = pos.x()
             y = pos.y()
@@ -57,7 +57,7 @@ class GUIVisualize(QWidget):
                     x = x - ((dim_y - dim_x) // 2)
 
             if x >= 0 and y >= 0 and x < dim_x and y < dim_y:
-                self.color_clicked.emit(self.image[y, x, :])
+                self.color_selected.emit(self.image[y, x, :])
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
         pass

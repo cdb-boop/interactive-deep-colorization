@@ -1,7 +1,14 @@
 import numpy as np
-from skimage import color
+import importlib
+skcolor = importlib.import_module("skimage.color")  # ignore import issue with skimage
 from PyQt5.QtGui import QColor
 import warnings
+from enum import Enum
+
+
+class ColorFormat(Enum):
+    RGB = 1
+    LAB = 2
 
 
 def qcolor2lab_1d(qc: QColor) -> np.ndarray:
@@ -13,12 +20,12 @@ def qcolor2lab_1d(qc: QColor) -> np.ndarray:
 def rgb2lab_1d(in_rgb: np.ndarray) -> np.ndarray:
     # take 1d numpy array and do color conversion
     # print('in_rgb', in_rgb)
-    return color.rgb2lab(in_rgb[np.newaxis, np.newaxis, :]).flatten()
+    return skcolor.rgb2lab(in_rgb[np.newaxis, np.newaxis, :]).flatten()
 
 
 def lab2rgb_1d(in_lab, clip: bool = True, dtype: str = 'uint8') -> np.ndarray:
     warnings.filterwarnings("ignore")
-    tmp_rgb = color.lab2rgb(in_lab[np.newaxis, np.newaxis, :]).flatten()
+    tmp_rgb = skcolor.lab2rgb(in_lab[np.newaxis, np.newaxis, :]).flatten()
     if clip:
         tmp_rgb = np.clip(tmp_rgb, 0, 1)
     if dtype == 'uint8':
@@ -26,7 +33,7 @@ def lab2rgb_1d(in_lab, clip: bool = True, dtype: str = 'uint8') -> np.ndarray:
     return tmp_rgb
 
 
-def snap_ab(input_l: np.float64, input_rgb: np.ndarray, return_type: str = 'rgb') -> np.ndarray:
+def snap_ab(input_l: np.float64, input_rgb: np.ndarray, return_type: ColorFormat = ColorFormat.RGB) -> np.ndarray:
     ''' given an input lightness and rgb, snap the color into a region where l,a,b is in-gamut
     '''
     T = 20
@@ -36,21 +43,22 @@ def snap_ab(input_l: np.float64, input_rgb: np.ndarray, return_type: str = 'rgb'
     for t in range(T):
         conv_lab[0] = input_l  # overwrite input l with input ab
         old_lab = conv_lab
-        tmp_rgb = color.lab2rgb(conv_lab[np.newaxis, np.newaxis, :]).flatten()
+        tmp_rgb = skcolor.lab2rgb(conv_lab[np.newaxis, np.newaxis, :]).flatten()
         tmp_rgb = np.clip(tmp_rgb, 0, 1)
-        conv_lab = color.rgb2lab(tmp_rgb[np.newaxis, np.newaxis, :]).flatten()
+        conv_lab = skcolor.rgb2lab(tmp_rgb[np.newaxis, np.newaxis, :]).flatten()
         dif_lab = np.sum(np.abs(conv_lab - old_lab))
         if dif_lab < 1:
             break
         # print(conv_lab)
 
     conv_rgb_ingamut = lab2rgb_1d(conv_lab, clip=True, dtype='uint8')
-    if (return_type == 'rgb'):
+    if (return_type == ColorFormat.RGB):
         return conv_rgb_ingamut
-
-    elif(return_type == 'lab'):
+    elif(return_type == ColorFormat.LAB):
         conv_lab_ingamut = rgb2lab_1d(conv_rgb_ingamut)
         return conv_lab_ingamut
+    else:
+        raise Exception("Color format unknown")
 
 
 class abGrid():
@@ -68,8 +76,8 @@ class abGrid():
         warnings.filterwarnings("ignore")
         thresh = 1.0
         pts_lab = np.concatenate((l_in + np.zeros((self.A, self.B, 1)), self.pts_full_grid), axis=2)
-        self.pts_rgb = (255 * np.clip(color.lab2rgb(pts_lab), 0, 1)).astype('uint8')
-        pts_lab_back = color.rgb2lab(self.pts_rgb)
+        self.pts_rgb = (255 * np.clip(skcolor.lab2rgb(pts_lab), 0, 1)).astype('uint8')
+        pts_lab_back = skcolor.rgb2lab(self.pts_rgb)
         pts_lab_diff = np.linalg.norm(pts_lab - pts_lab_back, axis=2)
 
         self.mask = pts_lab_diff < thresh
@@ -84,8 +92,8 @@ class abGrid():
         # print('ab2xy (%d, %d) -> (%d, %d)' % (a, b, x, y))
         return x, y
 
-    def xy2ab(self, x: np.float64, y: np.float64) -> tuple[np.float64, np.float64]:
-        a = y - self.gamut_size
-        b = x - self.gamut_size
+    def xy2ab(self, x: int, y: int) -> tuple[np.float64, np.float64]:
+        a = np.float64(y) - self.gamut_size
+        b = np.float64(x) - self.gamut_size
         # print('xy2ab (%d, %d) -> (%d, %d)' % (x, y, a, b))
         return a, b

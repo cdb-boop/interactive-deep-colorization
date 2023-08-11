@@ -18,148 +18,149 @@ class GUIDesign(QWidget):
             dist_model: colorize_image.ColorizeImageTorchDist | None = None, 
             img_file: str | None = None, 
             load_size: int = 256, 
-            win_size: int = 256, 
-            save_all: bool = True):
-        # draw the layout
+            win_size: int = 256):
         QWidget.__init__(self)
-        # main layout
-        mainLayout = QHBoxLayout()
-        self.setLayout(mainLayout)
-        # gamut layout
-        self.gamutWidget = gui_gamut.GUIGamut(gamut_size=160)
-        gamutLayout = self.AddWidget(self.gamutWidget, 'ab Color Gamut')
-        colorLayout = QVBoxLayout()
 
-        colorLayout.addLayout(gamutLayout)
-        mainLayout.addLayout(colorLayout)
+        # main layout
+        main_layout = QHBoxLayout()
+        self.setLayout(main_layout)
+
+        # gamut layout
+        self.gamut = gui_gamut.GUIGamut(gamut_size=160)
+        gamutLayout = self.AddWidget(self.gamut, 'ab Color Gamut')
+        color_layout = QVBoxLayout()
+
+        color_layout.addLayout(gamutLayout)
+        main_layout.addLayout(color_layout)
 
         # palettes
-        self.suggestionPalette = gui_palette.GUIPalette(grid_sz=(10, 1))
-        self.recentlyUsedPalette = gui_palette.GUIPalette(grid_sz=(10, 1))
-        cpLayout = self.AddWidget(self.suggestionPalette, 'Suggested colors')
-        colorLayout.addLayout(cpLayout)
-        upLayout = self.AddWidget(self.recentlyUsedPalette, 'Recently used colors')
-        colorLayout.addLayout(upLayout)
+        self.suggestion_palette = gui_palette.GUIPalette(grid_sz=(10, 1))
+        suggestion_palette_layout = self.AddWidget(self.suggestion_palette, 'Suggested colors')
+        color_layout.addLayout(suggestion_palette_layout)
+
+        self.recently_used_palette = gui_palette.GUIPalette(grid_sz=(10, 1))
+        recently_used_palette_layout = self.AddWidget(self.recently_used_palette, 'Recently used colors')
+        color_layout.addLayout(recently_used_palette_layout)
 
         # color indicator
-        # TODO: factor out to GUIColorIndicator class in gui_color_indicator.py
-        self.colorPush = QPushButton()  # to visualize the selected color
-        self.colorPush.setFixedWidth(self.suggestionPalette.width())
-        self.colorPush.setFixedHeight(25)
+        self.color_indicator = QPushButton()  # to visualize the selected color
+        self.color_indicator.setFixedWidth(self.suggestion_palette.width())
+        self.color_indicator.setFixedHeight(25)
         self.color_indicator_reset()
-        colorPushLayout = self.AddWidget(self.colorPush, 'Color')
-        colorLayout.addLayout(colorPushLayout)
-        colorLayout.setAlignment(Qt.AlignTop)
+        color_indicator_layout = self.AddWidget(self.color_indicator, 'Color')
+        color_layout.addLayout(color_indicator_layout)
+        color_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # drawPad layout
-        drawPadLayout = QVBoxLayout()
-        mainLayout.addLayout(drawPadLayout)
-        self.drawWidget = gui_draw.GUIDraw(color_model, dist_model, load_size=load_size, win_size=win_size)
-        drawPadLayout = self.AddWidget(self.drawWidget, 'Drawing Pad')
-        mainLayout.addLayout(drawPadLayout)
+        drawpad_layout = QVBoxLayout()
+        main_layout.addLayout(drawpad_layout)
+        self.drawpad = gui_draw.GUIDraw(color_model, dist_model, load_size=load_size, win_size=win_size)
+        drawpad_layout = self.AddWidget(self.drawpad, 'Drawing Pad')
+        main_layout.addLayout(drawpad_layout)
 
-        drawPadMenu = QHBoxLayout()
+        drawpad_menu = QHBoxLayout()
 
-        self.bGray = QCheckBox("&Gray")
-        self.bGray.setToolTip('show gray-scale image')
+        self.toggle_gray_drawpad = QCheckBox("&Gray")
+        self.toggle_gray_drawpad.setToolTip('show gray-scale image')
 
-        self.bLoad = QPushButton('&Load')
-        self.bLoad.setToolTip('load an input image')
-        self.bSave = QPushButton("&Save")
-        self.bSave.setToolTip('Save the current result.')
+        self.load_button = QPushButton('&Load')
+        self.load_button.setToolTip('load an input image')
+        self.save_button = QPushButton("&Save")
+        self.save_button.setToolTip('Save the current result.')
 
-        drawPadMenu.addWidget(self.bGray)
-        drawPadMenu.addWidget(self.bLoad)
-        drawPadMenu.addWidget(self.bSave)
+        drawpad_menu.addWidget(self.toggle_gray_drawpad)
+        drawpad_menu.addWidget(self.load_button)
+        drawpad_menu.addWidget(self.save_button)
 
-        drawPadLayout.addLayout(drawPadMenu)
-        self.visWidget = gui_visualize.GUIVisualize(win_size=win_size, scale=win_size / float(load_size))
-        visWidgetLayout = self.AddWidget(self.visWidget, 'Result')
-        mainLayout.addLayout(visWidgetLayout)
+        drawpad_layout.addLayout(drawpad_menu)
+        self.visualization = gui_visualize.GUIVisualize(win_size=win_size, scale=win_size / float(load_size))
+        visualization_layout = self.AddWidget(self.visualization, 'Result')
+        main_layout.addLayout(visualization_layout)
 
-        self.bRestart = QPushButton("&Restart")
-        self.bRestart.setToolTip('Restart the system')
+        self.restart_button = QPushButton("&Restart")
+        self.restart_button.setToolTip('Restart the system')
 
-        self.bQuit = QPushButton("&Quit")
-        self.bQuit.setToolTip('Quit the system.')
-        visWidgetMenu = QHBoxLayout()
-        visWidgetMenu.addWidget(self.bRestart)
+        self.quit_button = QPushButton("&Quit")
+        self.quit_button.setToolTip('Quit the system.')
+        visualization_menu = QHBoxLayout()
+        visualization_menu.addWidget(self.restart_button)
 
-        visWidgetMenu.addWidget(self.bQuit)
-        visWidgetLayout.addLayout(visWidgetMenu)
+        visualization_menu.addWidget(self.quit_button)
+        visualization_layout.addLayout(visualization_menu)
 
-        self.drawWidget.update()
-        self.visWidget.update()
+        self.drawpad.update()
+        self.visualization.update()
 
-        # update draw pad
-        self.visWidget.color_clicked.connect(self.drawWidget.set_color)
-        self.gamutWidget.color_selected.connect(self.drawWidget.set_color)
-        self.suggestionPalette.color_selected.connect(self.drawWidget.set_color)
-        self.recentlyUsedPalette.color_selected.connect(self.drawWidget.set_color)
+        # drawpad events
+        self.visualization.color_selected.connect(self.drawpad.set_color)
+        self.gamut.color_selected.connect(self.drawpad.set_color)
+        self.suggestion_palette.color_selected.connect(self.drawpad.set_color)
+        self.recently_used_palette.color_selected.connect(self.drawpad.set_color)
 
-        # update colorized image visualization
-        self.drawWidget.colorized_image_generated.connect(self.visWidget.set_image)
+        # colorized image visualization events
+        self.drawpad.colorized_image_generated.connect(self.visualization.set_image)
 
-        # update gamut
-        self.drawWidget.gamut_changed.connect(self.gamutWidget.set_gamut)
-        self.drawWidget.selected_color_changed.connect(self.gamutWidget.set_ab)
-        self.visWidget.color_clicked.connect(self.gamutWidget.set_ab)
-        self.suggestionPalette.color_selected.connect(self.gamutWidget.set_ab)
-        self.recentlyUsedPalette.color_selected.connect(self.gamutWidget.set_ab)
+        # gamut events
+        self.drawpad.gamut_changed.connect(self.gamut.set_gamut)
 
-        # suggestion palette
-        self.drawWidget.suggested_colors_changed.connect(self.suggestionPalette.set_colors)
+        self.drawpad.selected_color_changed.connect(self.gamut.set_ab)
+        self.visualization.color_selected.connect(self.gamut.set_ab)
+        self.suggestion_palette.color_selected.connect(self.gamut.set_ab)
+        self.recently_used_palette.color_selected.connect(self.gamut.set_ab)
 
-        # recently used palette
-        self.drawWidget.recently_used_colors_changed.connect(self.recentlyUsedPalette.set_colors)
+        # suggestion palette events
+        self.drawpad.suggested_colors_changed.connect(self.suggestion_palette.set_colors)
 
-        # update color indicator
-        self.drawWidget.selected_color_changed.connect(self.set_indicator_color)
-        self.visWidget.color_clicked.connect(self.set_indicator_color)
-        self.gamutWidget.color_selected.connect(self.set_indicator_color)
-        self.suggestionPalette.color_selected.connect(self.set_indicator_color)
-        self.recentlyUsedPalette.color_selected.connect(self.set_indicator_color)
+        # recently used palette events
+        self.drawpad.recently_used_colors_changed.connect(self.recently_used_palette.set_colors)
+
+        # color indicator events
+        self.drawpad.selected_color_changed.connect(self.set_indicator_color)
+        self.visualization.color_selected.connect(self.set_indicator_color)
+        self.gamut.color_selected.connect(self.set_indicator_color)
+        self.suggestion_palette.color_selected.connect(self.set_indicator_color)
+        self.recently_used_palette.color_selected.connect(self.set_indicator_color)
 
         # menu events
-        self.bGray.setChecked(True)
-        self.bRestart.clicked.connect(self.reset)
-        self.bQuit.clicked.connect(self.quit)
-        self.bGray.toggled.connect(self.enable_gray)
-        self.bSave.clicked.connect(self.save)
-        self.bLoad.clicked.connect(self.load)
+        self.toggle_gray_drawpad.setChecked(True)
+        self.restart_button.clicked.connect(self.reset)
+        self.quit_button.clicked.connect(self.quit)
+        self.toggle_gray_drawpad.toggled.connect(self.enable_gray)
+        self.save_button.clicked.connect(self.save)
+        self.load_button.clicked.connect(self.load)
 
         self.start_t = time.time()
 
         if img_file is not None:
-            self.drawWidget.init_result(img_file)
+            self.drawpad.init_result(img_file)
 
     def AddWidget(self, widget: QWidget, title: str) -> QVBoxLayout:
-        widgetLayout = QVBoxLayout()
-        widgetBox = QGroupBox()
-        widgetBox.setTitle(title)
-        vbox_t = QVBoxLayout()
-        vbox_t.addWidget(widget)
-        widgetBox.setLayout(vbox_t)
-        widgetLayout.addWidget(widgetBox)
+        layout = QVBoxLayout()
+        box = QGroupBox()
+        box.setTitle(title)
+        vertical_box_t = QVBoxLayout()
+        vertical_box_t.addWidget(widget)
+        box.setLayout(vertical_box_t)
+        layout.addWidget(box)
 
-        return widgetLayout
+        return layout
 
     def nextImage(self) -> None:
-        self.drawWidget.nextImage()
+        self.drawpad.nextImage()
 
     def reset(self) -> None:
         # self.start_t = time.time()
         print('============================reset all=========================================')
-        self.visWidget.reset()
-        self.gamutWidget.reset()
-        self.suggestionPalette.reset()
-        self.recentlyUsedPalette.reset()
-        self.drawWidget.reset()
+        self.visualization.reset()
+        self.gamut.reset()
+        self.suggestion_palette.reset()
+        self.recently_used_palette.reset()
+        self.drawpad.reset()
         self.color_indicator_reset()
         self.update()
 
     def enable_gray(self) -> None:
-        self.drawWidget.enable_gray()
+        self.drawpad.enable_gray()
 
     def quit(self) -> None:
         print(f"GUIDesign: time spent = {time.time() - self.start_t:3.3f}")
@@ -167,31 +168,31 @@ class GUIDesign(QWidget):
 
     def save(self) -> None:
         print(f"GUIDesign: time spent = {time.time() - self.start_t:3.3f}")
-        self.drawWidget.save_result()
+        self.drawpad.save_result()
 
     def load(self) -> None:
-        self.drawWidget.load_image()
+        self.drawpad.load_image()
 
-    def color_indicator_reset(self):
+    def color_indicator_reset(self) -> None:
         self.set_indicator_color(np.array((0,0,0)).astype('uint8'))
 
-    def set_indicator_color(self, color: np.ndarray):
+    def set_indicator_color(self, color: np.ndarray) -> None:
         color = utils.ndarray_to_qcolor(color)
-        self.colorPush.setStyleSheet(f"background-color: {color.name()}")
+        self.color_indicator.setStyleSheet(f"background-color: {color.name()}")
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
-        if event.key() == Qt.Key_R:
+        if event.key() == Qt.Key.Key_R:
             self.reset()
 
-        if event.key() == Qt.Key_Q:
+        if event.key() == Qt.Key.Key_Q:
             self.save()
             self.quit()
 
-        if event.key() == Qt.Key_S:
+        if event.key() == Qt.Key.Key_S:
             self.save()
 
-        if event.key() == Qt.Key_G:
-            self.bGray.toggle()
+        if event.key() == Qt.Key.Key_G:
+            self.toggle_gray_drawpad.toggle()
 
-        if event.key() == Qt.Key_L:
+        if event.key() == Qt.Key.Key_L:
             self.load()

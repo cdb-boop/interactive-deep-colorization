@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+import numpy as np
+import numpy.typing as npt
 
 
 class SIGGRAPHGenerator(nn.Module):
@@ -132,22 +134,27 @@ class SIGGRAPHGenerator(nn.Module):
         self.upsample4 = nn.Sequential(*[nn.Upsample(scale_factor=4, mode='nearest'), ])
         self.softmax = nn.Sequential(*[nn.Softmax(dim=1), ])
 
-    def forward(self, input_A, input_B, mask_B, maskcent=0):
+    def forward(
+            self, 
+            input_A: npt.NDArray[np.float64], 
+            input_B: npt.NDArray[np.float64], 
+            mask_B: npt.NDArray[np.float64], 
+            maskcent: float = 0.0) -> tuple[torch.Tensor, torch.Tensor]:
         # input_A \in [-50,+50]
         # input_B \in [-110, +110]
         # mask_B \in [0, +1.0]
 
         if self.use_gpu:
-            input_A = torch.Tensor(input_A).cuda()[None, :, :, :]
-            input_B = torch.Tensor(input_B).cuda()[None, :, :, :]
-            mask_B = torch.Tensor(mask_B).cuda()[None, :, :, :]
+            input_A_t = torch.Tensor(input_A).cuda()[None, :, :, :]
+            input_B_t = torch.Tensor(input_B).cuda()[None, :, :, :]
+            mask_B_t = torch.Tensor(mask_B).cuda()[None, :, :, :]
         else:
-            input_A = torch.Tensor(input_A)[None, :, :, :]
-            input_B = torch.Tensor(input_B)[None, :, :, :]
-            mask_B = torch.Tensor(mask_B)[None, :, :, :]
-        mask_B = mask_B - maskcent
+            input_A_t = torch.Tensor(input_A)[None, :, :, :]
+            input_B_t = torch.Tensor(input_B)[None, :, :, :]
+            mask_B_t = torch.Tensor(mask_B)[None, :, :, :]
+        mask_B_t = mask_B_t - maskcent
 
-        conv1_2 = self.model1(torch.cat((input_A / 100., input_B / 110., mask_B), dim=1))
+        conv1_2 = self.model1(torch.cat((input_A_t / 100., input_B_t / 110., mask_B_t), dim=1))
         conv2_2 = self.model2(conv1_2[:, :, ::2, ::2])
         conv3_3 = self.model3(conv2_2[:, :, ::2, ::2])
         conv4_3 = self.model4(conv3_3[:, :, ::2, ::2])
@@ -174,4 +181,4 @@ class SIGGRAPHGenerator(nn.Module):
             conv10_up = self.model10up(conv9_3) + self.model1short10(conv1_2)
             conv10_2 = self.model10(conv10_up)
             out_reg = self.model_out(conv10_2)
-            return out_reg * 110
+            return (out_reg * 110, torch.Tensor())

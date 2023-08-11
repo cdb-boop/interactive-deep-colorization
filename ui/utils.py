@@ -1,14 +1,10 @@
 from __future__ import print_function
 
-import inspect
-import re
 import numpy as np
+import numpy.typing as npt
 import cv2
 import os
-try:
-    import pickle as pickle
-except ImportError:
-    import pickle
+import pickle
 from typing import Any
 import warnings
 from PyQt5.QtGui import QColor
@@ -34,13 +30,6 @@ def PickleLoad(file_name: str) -> Any:
 def PickleSave(file_name: str, data: Any) -> None:
     with open(file_name, "wb") as f:
         pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
-
-
-def varname(p: Any):
-    for line in inspect.getframeinfo(inspect.currentframe().f_back)[3]:
-        m = re.search(r'\bvarname\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)', line)
-        if m:
-            return m.group(1)
 
 
 def print_numpy(x: Any, val: bool = True, shp: bool = False) -> None:
@@ -112,8 +101,8 @@ def grid_vis(X: Any, nh: int, nw: int) -> Any:  # [buggy]
     img = np.squeeze(img)
     return img
 
-def ndarray_to_qcolor(a: np.ndarray) -> QColor:
+def ndarray_to_qcolor(a: npt.NDArray[np.uint8]) -> QColor:
     return QColor(a[0], a[1], a[2])
 
-def qcolor_to_ndarray(c: QColor) -> np.ndarray:
+def qcolor_to_ndarray(c: QColor) -> npt.NDArray[np.uint8]:
     return np.array((c.red(), c.green(), c.blue())).astype('uint8')

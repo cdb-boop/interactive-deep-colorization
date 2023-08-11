@@ -2,11 +2,12 @@ from PyQt5.QtWidgets import QWidget
 from PyQt5.QtGui import QPainter, QColor, QPen, QPaintEvent, QMouseEvent
 from PyQt5.QtCore import Qt, pyqtSignal, QSize, QPoint
 import numpy as np
+import numpy.typing as npt
 
 
 class GUIPalette(QWidget):
-    color_selected = pyqtSignal(np.ndarray)
-    
+    color_selected = pyqtSignal(np.ndarray)  # 1x3 uint8
+
     def __init__(self, grid_sz: tuple[int, int] = (6, 3)):
         QWidget.__init__(self)
         self.color_width = 25
@@ -16,35 +17,36 @@ class GUIPalette(QWidget):
         self.setFixedSize(self.win_width, self.win_height)
         self.num_colors = grid_sz[0] * grid_sz[1]
         self.grid_sz = grid_sz
-        self.colors = None
+        self.colors = np.array([], np.uint8)
         self.color_id = -1
         self.reset()
 
-    def set_colors(self, colors: np.ndarray) -> None:
-        if colors is not None:
+    def set_colors(self, colors: npt.NDArray[np.float32]) -> None:
+        if colors.shape[0] == 0:
+            self.colors = np.array([], np.uint8)
+        else:
             self.colors = (colors[:min(colors.shape[0], self.num_colors), :] * 255).astype(np.uint8)
-            self.color_id = -1
-            self.update()
+        self.color_id = -1
+        self.update()
 
     def paintEvent(self, event: QPaintEvent) -> None:
         painter = QPainter()
         painter.begin(self)
         painter.setRenderHint(QPainter.Antialiasing)
-        painter.fillRect(event.rect(), Qt.white)
-        if self.colors is not None:
-            for n, c in enumerate(self.colors):
-                ca = QColor(c[0], c[1], c[2], 255)
-                painter.setPen(QPen(Qt.black, 1))
-                painter.setBrush(ca)
-                grid_x = n % self.grid_sz[0]
-                grid_y = (n - grid_x) // self.grid_sz[0]
-                x = grid_x * (self.color_width + self.border) + self.border
-                y = grid_y * (self.color_width + self.border) + self.border
+        painter.fillRect(event.rect(), Qt.GlobalColor.white)
+        for n, c in enumerate(self.colors):
+            ca = QColor(c[0], c[1], c[2], 255)
+            painter.setPen(QPen(Qt.GlobalColor.black, 1))
+            painter.setBrush(ca)
+            grid_x = n % self.grid_sz[0]
+            grid_y = (n - grid_x) // self.grid_sz[0]
+            x = grid_x * (self.color_width + self.border) + self.border
+            y = grid_y * (self.color_width + self.border) + self.border
 
-                if n == self.color_id:
-                    painter.drawEllipse(x, y, self.color_width, self.color_width)
-                else:
-                    painter.drawRoundedRect(x, y, self.color_width, self.color_width, 2, 2)
+            if n == self.color_id:
+                painter.drawEllipse(x, y, self.color_width, self.color_width)
+            else:
+                painter.drawRoundedRect(x, y, self.color_width, self.color_width, 2, 2)
 
         painter.end()
 
@@ -52,7 +54,7 @@ class GUIPalette(QWidget):
         return QSize(self.win_width, self.win_height)
 
     def reset(self) -> None:
-        self.colors = None
+        self.colors = np.array([], np.uint8)
         self.mouseClicked = False
         self.color_id = -1
         self.update()
@@ -71,6 +73,7 @@ class GUIPalette(QWidget):
 
     def update_ui(self, color_id: int) -> None:
         assert isinstance(color_id, int), "GUIPalette: Expected 'color_id' of type 'int'"
+        assert self.colors is not None, "GUIPalette: colors cannot be 'None'"
         self.color_id = color_id
         self.update()
         if color_id >= 0 and color_id < len(self.colors):
@@ -80,7 +83,8 @@ class GUIPalette(QWidget):
             self.update()
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
-        if event.button() == Qt.LeftButton and self.colors is not None:  # click the point
+        assert self.colors is not None, "GUIPalette: colors cannot be 'None'"
+        if event.button() == Qt.MouseButton.LeftButton:
             color_id = self.selected_color(event.pos())
             self.update_ui(color_id)
             self.mouseClicked = True

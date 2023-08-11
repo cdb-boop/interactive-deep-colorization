@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.typing as npt
 from PyQt5.QtGui import QColor, QPen, QPainter
 from PyQt5.QtCore import Qt, QRectF, QPoint
 import cv2
@@ -78,9 +79,9 @@ class PointEdit(UserEdit):
         d_to_black = r * r + g * g + b * b
         d_to_white = (255 - r) * (255 - r) + (255 - g) * (255 - g) + (255 - r) * (255 - r)
         if d_to_black > d_to_white:
-            painter.setPen(QPen(Qt.black, 1))
+            painter.setPen(QPen(Qt.GlobalColor.black, 1))
         else:
-            painter.setPen(QPen(Qt.white, 1))
+            painter.setPen(QPen(Qt.GlobalColor.white, 1))
         painter.setBrush(ca)
         painter.drawRoundedRect(QRectF(self.pnt.x() - w, self.pnt.y() - w, 1 + 2 * w, 1 + 2 * w), 2, 2)
 
@@ -90,15 +91,15 @@ class UIControl:
         self.win_size = win_size
         self.load_size = load_size
         self.reset()
-        self.userEdit = None
-        self.userEdits = []
-        self.ui_count = 0
+        self.userEdit: None | PointEdit = None
+        self.userEdits: list[PointEdit] = []
+        self.ui_count: int = 0
 
     def setImageSize(self, img_size: tuple[int, int]) -> None:
         self.img_size = img_size
 
     def addStroke(self, prevPnt: QPoint, nextPnt: QPoint, color: QColor, userColor: QColor, width: float) -> None:
-        warnings.warn("UIControl: 'addStroke()' unimplemented.", RuntimeWarning)
+        warnings.warn("UIControl: 'addStroke()' unimplemented", RuntimeWarning)
         pass
 
     def erasePoint(self, pnt: QPoint) -> bool:
@@ -106,7 +107,7 @@ class UIControl:
         for id, ue in enumerate(self.userEdits):
             if ue.is_same(pnt):
                 self.userEdits.remove(ue)
-                print(f"UIControl: Removed user edit {id}.\n")
+                print(f"UIControl: Removed user edit {id}\n")
                 isErase = True
                 break
         return isErase
@@ -133,10 +134,16 @@ class UIControl:
             return userColor, width, isNew
 
     def movePoint(self, pnt: QPoint, color: QColor, userColor: QColor, width: float) -> None:
-        self.userEdit.add(pnt, color, userColor, width, self.ui_count)
+        if self.userEdit is not None:
+            self.userEdit.add(pnt, color, userColor, width, self.ui_count)
+        else:
+            warnings.warn("UIControl: Cannot move user edit 'None'", RuntimeWarning)
 
     def update_color(self, color: QColor, userColor: QColor) -> None:
-        self.userEdit.update_color(color, userColor)
+        if self.userEdit is not None:
+            self.userEdit.update_color(color, userColor)
+        else:
+            warnings.warn("UIControl: Cannot update color of user edit 'None'", RuntimeWarning)
 
     def update_painter(self, painter: QPainter) -> None:
         for ue in self.userEdits:
@@ -147,10 +154,9 @@ class UIControl:
         warnings.warn("UIControl: 'get_stroke_image()' unimplemented.", RuntimeWarning)
         return im
 
-    def get_recently_used_colors(self) -> np.ndarray | None:
+    def get_recently_used_colors(self) -> npt.NDArray[np.float32]:
         if len(self.userEdits) == 0:
-            warnings.warn("UIControl: 'used_colors()' has no edits.", RuntimeWarning)
-            return None
+            return np.array([], np.uint8)
         nEdits = len(self.userEdits)
         ui_counts = np.zeros(nEdits)
         ui_colors = np.zeros((nEdits, 3))

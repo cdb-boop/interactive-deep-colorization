@@ -1,7 +1,9 @@
 import numpy as np
+import numpy.typing as npt
 import cv2
 import matplotlib.pyplot as plt
-from skimage import color
+import importlib
+skcolor = importlib.import_module("skimage.color")  # ignore import issue with skimage
 from sklearn.cluster import KMeans
 import os
 from scipy.ndimage.interpolation import zoom
@@ -9,7 +11,7 @@ from typing import Any
 import warnings
 
 
-def create_temp_directory(path_template: str, N: float = 1e8) -> str:
+def create_temp_directory(path_template: str, N: int = int(1e8)) -> str:
     print(f"Path template: {path_template}")
     cur_path = path_template % np.random.randint(0, N)
     while(os.path.exists(cur_path)):
@@ -26,7 +28,7 @@ def lab2rgb_transpose(img_l: np.ndarray, img_ab: np.ndarray) -> np.ndarray:
         OUTPUTS
             returned value is XxXx3 '''
     pred_lab = np.concatenate((img_l, img_ab), axis=0).transpose((1, 2, 0))
-    pred_rgb = (np.clip(color.lab2rgb(pred_lab), 0, 1) * 255).astype('uint8')
+    pred_rgb = (np.clip(skcolor.lab2rgb(pred_lab), 0, 1) * 255).astype('uint8')
     return pred_rgb
 
 
@@ -35,7 +37,7 @@ def rgb2lab_transpose(img_rgb: np.ndarray) -> np.ndarray:
             img_rgb XxXx3
         OUTPUTS
             returned value is 3xXxX '''
-    return color.rgb2lab(img_rgb).transpose((2, 0, 1))
+    return skcolor.rgb2lab(img_rgb).transpose((2, 0, 1))
 
 
 class ColorizeImageBase():
@@ -46,6 +48,14 @@ class ColorizeImageBase():
         self.Xfullres_max = Xfullres_max  # maximum size of maximum dimension
         self.img_just_set = False  # this will be true whenever image is just loaded
         # net_forward can set this to False if they want
+
+        # defaults
+        self.l_norm = 1.0
+        self.ab_norm = 1.0
+        self.l_mean = 50.0
+        self.ab_mean = 0.0
+        self.mask_mult = 1.0
+        self.output_rgb = np.array([], np.float64)
 
     def prep_net(self) -> None:
         raise Exception('ColorizeImageBase: Should be implemented by base class')
@@ -97,20 +107,17 @@ class ColorizeImageBase():
         self.input_mask_mult = input_mask * self.mask_mult
         return 0
 
-    def get_result_PSNR(self, result: int = -1, return_SE_map: bool = False) -> tuple[np.ndarray, np.ndarray] | np.ndarray:
-        if np.array((result)).flatten()[0] == -1:
-            cur_result = self.get_img_forward()
-        else:
-            cur_result = result.copy()
-        SE_map = (1. * self.img_rgb - cur_result)**2
-        cur_MSE = np.mean(SE_map)
-        cur_PSNR = 20 * np.log10(255. / np.sqrt(cur_MSE))
-        if return_SE_map:
-            return(cur_PSNR, SE_map)
-        else:
-            return cur_PSNR
+    #def get_result_PSNR(self, result: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    #    if np.array((result)).flatten()[0] == -1:
+    #        cur_result = self.get_img_forward()
+    #    else:
+    #        cur_result = result.copy()
+    #    SE_map = (1. * self.img_rgb - cur_result)**2
+    #    cur_MSE = np.mean(SE_map)
+    #    cur_PSNR = 20 * np.log10(255. / np.sqrt(cur_MSE))
+    #    return(cur_PSNR, SE_map)
 
-    def get_img_forward(self) -> np.ndarray:
+    def get_img_forward(self) -> npt.NDArray[np.float64]:
         # get image with point estimate
         return self.output_rgb
 
@@ -171,13 +178,13 @@ class ColorizeImageBase():
                 zoom_factor = 1. * self.Xfullres_max / Yfullres
             self.img_rgb_fullres = zoom(self.img_rgb_fullres, (zoom_factor, zoom_factor, 1), order=1)
 
-        self.img_lab_fullres = color.rgb2lab(self.img_rgb_fullres).transpose((2, 0, 1))
+        self.img_lab_fullres = skcolor.rgb2lab(self.img_rgb_fullres).transpose((2, 0, 1))
         self.img_l_fullres = self.img_lab_fullres[[0], :, :]
         self.img_ab_fullres = self.img_lab_fullres[1:, :, :]
 
     def _set_img_lab_(self) -> None:
         # set self.img_lab from self.im_rgb
-        self.img_lab = color.rgb2lab(self.img_rgb).transpose((2, 0, 1))
+        self.img_lab = skcolor.rgb2lab(self.img_rgb).transpose((2, 0, 1))
         self.img_l = self.img_lab[[0], :, :]
         self.img_ab = self.img_lab[1:, :, :]
 
@@ -204,12 +211,12 @@ class ColorizeImageTorch(ColorizeImageBase):
     def __init__(self, Xd: int = 256, maskcent: bool = False):
         print("ColorizeImageTorch: PyTorch instantiated")
         ColorizeImageBase.__init__(self, Xd)
-        self.l_norm = 1.
-        self.ab_norm = 1.
-        self.l_mean = 50.
-        self.ab_mean = 0.
-        self.mask_mult = 1.
-        self.mask_cent = .5 if maskcent else 0
+        self.l_norm = 1.0
+        self.ab_norm = 1.0
+        self.l_mean = 50.0
+        self.ab_mean = 0.0
+        self.mask_mult = 1.0
+        self.mask_cent = 0.5 if maskcent else 0
 
         # Load grid properties
         self.pts_in_hull = np.array(np.meshgrid(np.arange(-110, 120, 10), np.arange(-110, 120, 10))).reshape((2, 529)).T
@@ -248,7 +255,7 @@ class ColorizeImageTorch(ColorizeImageBase):
             self.__patch_instance_norm_state_dict(state_dict, getattr(module, key), keys, i + 1)
 
     # ***** Call forward *****
-    def net_forward(self, input_ab: np.ndarray, input_mask: np.ndarray) -> int | np.ndarray:
+    def net_forward(self, input_ab: np.ndarray, input_mask: np.ndarray) -> int | npt.NDArray[np.float64]:
         # INPUTS
         #     ab         2xXxX     input color patches (non-normalized)
         #     mask     1xXxX    input mask, indicating which points have been provided
@@ -262,14 +269,14 @@ class ColorizeImageTorch(ColorizeImageBase):
         # return prediction
         # self.net.blobs['data_l_ab_mask'].data[...] = net_input_prepped
         # embed()
-        output_ab = self.net.forward(self.img_l_mc, self.input_ab_mc, self.input_mask_mult, self.mask_cent)[0, :, :, :].cpu().data.numpy()
+        output_ab = self.net.forward(self.img_l_mc, self.input_ab_mc, self.input_mask_mult, self.mask_cent)[0][0, :, :, :].cpu().data.numpy()
         self.output_rgb = lab2rgb_transpose(self.img_l, output_ab)
         # self.output_rgb = lab2rgb_transpose(self.img_l, self.net.blobs[self.pred_ab_layer].data[0, :, :, :])
 
         self._set_out_ab_()
         return self.output_rgb
 
-    def get_img_forward(self) -> np.ndarray:
+    def get_img_forward(self) -> npt.NDArray[np.float64]:
         # get image with point estimate
         return self.output_rgb
 
@@ -305,7 +312,7 @@ class ColorizeImageTorchDist(ColorizeImageTorch):
         # embed()
         if ColorizeImageBase.net_forward(self, input_ab, input_mask) == -1:
             return -1
-        
+
         # set distribution
         (function_return, self.dist_ab) = self.net.forward(self.img_l_mc, self.input_ab_mc, self.input_mask_mult, self.mask_cent)
         function_return = function_return[0, :, :, :].cpu().data.numpy()
@@ -321,13 +328,14 @@ class ColorizeImageTorchDist(ColorizeImageTorch):
         # return
         return function_return
 
-    def get_ab_reccs(self, h: int, w: int, K: int = 5, N: int = 25000, return_conf: bool = False) -> int | np.ndarray | tuple[np.ndarray, np.ndarray]:
+    def get_ab_reccs(self, h: int, w: int, K: int = 5, N: int = 25000) -> tuple[None, None] | tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
         ''' Recommended colors at point (h,w)
         Call this after calling net_forward
+        Returns (cluster centers, percentage of points within each cluster)
         '''
         if not self.dist_ab_set:
             warnings.warn("ColorizeImageTorchDist: Need to set prediction first", RuntimeWarning)
-            return 0
+            return None, None
 
         # randomly sample from pdf
         cmf = np.cumsum(self.dist_ab[:, h, w])  # CMF
@@ -346,14 +354,12 @@ class ColorizeImageTorchDist(ColorizeImageTorch):
         k_label_cnt = np.histogram(kmeans.labels_, np.arange(0, K + 1))[0]
         k_inds = np.argsort(k_label_cnt, axis=0)[::-1]
 
-        cluster_per = 1. * k_label_cnt[k_inds] / N  # percentage of points within cluster
+        cluster_percentages = 1. * k_label_cnt[k_inds] / N  # percentage of points within cluster
         cluster_centers = kmeans.cluster_centers_[k_inds, :]  # cluster centers
+        print(f"type(cluster_centers[0][0]):{type(cluster_centers[0][0])}")
 
         # cluster_centers = np.random.uniform(low=-100,high=100,size=(N,2))
-        if return_conf:
-            return cluster_centers, cluster_per
-        else:
-            return cluster_centers
+        return cluster_centers, cluster_percentages
 
     def compute_entropy(self) -> None:
         # compute the distribution entropy (really slow right now)
@@ -378,11 +384,11 @@ class ColorizeImageCaffe(ColorizeImageBase):
     def __init__(self, Xd: int = 256):
         print("ColorizeImageCaffe: Caffe instantiated")
         ColorizeImageBase.__init__(self, Xd)
-        self.l_norm = 1.
-        self.ab_norm = 1.
-        self.l_mean = 50.
-        self.ab_mean = 0.
-        self.mask_mult = 110.
+        self.l_norm = 1.0
+        self.ab_norm = 1.0
+        self.l_mean = 50.0
+        self.ab_mean = 0.0
+        self.mask_mult = 110.0
 
         self.pred_ab_layer = 'pred_ab'  # predicted ab layer
 
@@ -417,7 +423,7 @@ class ColorizeImageCaffe(ColorizeImageBase):
                 self.net.params[layer][0].data[:, 0, :, :] = np.array(((.25, .5, .25, 0), (.5, 1., .5, 0), (.25, .5, .25, 0), (0, 0, 0, 0)))[np.newaxis, :, :]
 
     # ***** Call forward *****
-    def net_forward(self, input_ab: np.ndarray, input_mask: np.ndarray) -> int | np.ndarray:
+    def net_forward(self, input_ab: np.ndarray, input_mask: np.ndarray) -> int | npt.NDArray[np.float64]:
         # INPUTS
         #     ab         2xXxX     input color patches (non-normalized)
         #     mask     1xXxX    input mask, indicating which points have been provided
@@ -437,7 +443,7 @@ class ColorizeImageCaffe(ColorizeImageBase):
         self._set_out_ab_()
         return self.output_rgb
 
-    def get_img_forward(self) -> np.ndarray:
+    def get_img_forward(self) -> npt.NDArray[np.float64]:
         # get image with point estimate
         return self.output_rgb
 
@@ -453,7 +459,7 @@ class ColorizeImageCaffeGlobDist(ColorizeImageCaffe):
         self.glob_mask_mult = 1.
         self.glob_layer = 'glob_ab_313_mask'
 
-    def net_forward(self, input_ab: np.ndarray, input_mask: np.ndarray, glob_dist: int = -1) -> np.ndarray:
+    def net_forward(self, input_ab: np.ndarray, input_mask: np.ndarray, glob_dist: int = -1) -> int | npt.NDArray[np.float64]:
         # glob_dist is 313 array, or -1
         if np.array(glob_dist).flatten()[0] == -1:  # run without this, zero it out
             self.net.blobs[self.glob_layer].data[0, :-1, 0, 0] = 0.
@@ -483,10 +489,10 @@ class ColorizeImageCaffeDist(ColorizeImageCaffe):
         self.dist_ab_grid = np.zeros((self.A, self.B, self.Xd, self.Xd))
         self.dist_entropy = np.zeros((self.Xd, self.Xd))
 
-    def prep_net(self, gpu_id: int, prototxt_path: str = '', caffemodel_path: str = '', S: float = .2) -> None:
+    def prep_net(self, gpu_id: int, prototxt_path: str = '', caffemodel_path: str = '', S: float = 0.2) -> None:
         ColorizeImageCaffe.prep_net(self, gpu_id, prototxt_path=prototxt_path, caffemodel_path=caffemodel_path)
         self.S = S
-        [self.scale_S_self.net.paramslayer][0].data[...] = S
+        self.net.params[self.scale_S_layer][0].data[...] = S
 
     def net_forward(self, input_ab: np.ndarray, input_mask: np.ndarray) -> int | np.ndarray:
         # INPUTS
@@ -512,13 +518,14 @@ class ColorizeImageCaffeDist(ColorizeImageCaffe):
         # return
         return function_return
 
-    def get_ab_reccs(self, h: int, w: int, K: int = 5, N: int = 25000, return_conf: bool = False) -> int | np.ndarray | tuple[np.ndarray, np.ndarray]:
+    def get_ab_reccs(self, h: int, w: int, K: int = 5, N: int = 25000) -> tuple[None, None] | tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
         ''' Recommended colors at point (h,w)
         Call this after calling net_forward
+        Returns (cluster centers, percentage of points within each cluster)
         '''
         if not self.dist_ab_set:
             warnings.warn("ColorizeImageCaffe: Need to set prediction first", RuntimeWarning)
-            return 0
+            return None, None
 
         # randomly sample from pdf
         cmf = np.cumsum(self.dist_ab[:, h, w])  # CMF
@@ -537,14 +544,11 @@ class ColorizeImageCaffeDist(ColorizeImageCaffe):
         k_label_cnt = np.histogram(kmeans.labels_, np.arange(0, K + 1))[0]
         k_inds = np.argsort(k_label_cnt, axis=0)[::-1]
 
-        cluster_per = 1. * k_label_cnt[k_inds] / N  # percentage of points within cluster
+        cluster_percentages = 1. * k_label_cnt[k_inds] / N  # percentage of points within cluster
         cluster_centers = kmeans.cluster_centers_[k_inds, :]  # cluster centers
 
         # cluster_centers = np.random.uniform(low=-100,high=100,size=(N,2))
-        if return_conf:
-            return cluster_centers, cluster_per
-        else:
-            return cluster_centers
+        return cluster_centers, cluster_percentages
 
     def compute_entropy(self) -> None:
         # compute the distribution entropy (really slow right now)
