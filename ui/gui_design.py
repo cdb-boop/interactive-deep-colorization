@@ -7,15 +7,15 @@ from . import gui_visualize
 from . import gui_gamut
 from . import gui_palette
 from . import utils
-from data import colorize_image
+from data import colorize_image as CI
 import time
 
 
 class GUIDesign(QWidget):
     def __init__(
             self, 
-            color_model: colorize_image.ColorizeImageTorch | colorize_image.ColorizeImageCaffe, 
-            dist_model: colorize_image.ColorizeImageTorchDist | colorize_image.ColorizeImageCaffeDist | None = None, 
+            colorizer: CI.Colorizer, 
+            dist_colorizer: CI.ColorizerDist | None = None, 
             img_file: str | None = None, 
             load_size: int = 256, 
             win_size: int = 256):
@@ -54,7 +54,7 @@ class GUIDesign(QWidget):
         # drawPad layout
         drawpad_layout = QVBoxLayout()
         main_layout.addLayout(drawpad_layout)
-        self.drawpad = gui_draw.GUIDraw(color_model, dist_model, load_size=load_size, win_size=win_size)
+        self.drawpad = gui_draw.GUIDraw(colorizer, dist_colorizer, load_size=load_size, win_size=win_size)
         drawpad_layout = self.AddWidget(self.drawpad, 'Drawing Pad')
         main_layout.addLayout(drawpad_layout)
 

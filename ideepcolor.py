@@ -57,30 +57,27 @@ if __name__ == '__main__':
     if args.backend == 'caffe':
         if args.cpu_mode:
             args.gpu = -1
-        colorModel = CI.ColorizeImageCaffe(args.load_size)
-        colorModel.prep_net(args.gpu, args.color_prototxt, args.color_caffemodel)
-
-        distModel = CI.ColorizeImageCaffeDist(args.load_size)
-        distModel.prep_net(args.gpu, args.dist_prototxt, args.dist_caffemodel)
+        color_model = CI.ModelCaffe(args.gpu, args.color_prototxt, args.color_caffemodel)
+        dist_model = CI.ModelDistCaffe(args.gpu, args.dist_prototxt, args.dist_caffemodel)
     elif args.backend == 'pytorch':
         if args.cpu_mode:
             args.gpu = None
-        colorModel = CI.ColorizeImageTorch(args.load_size,args.pytorch_maskcent)
-        colorModel.prep_net(args.gpu, args.color_model)
-
-        distModel = CI.ColorizeImageTorchDist(args.load_size,args.pytorch_maskcent)
-        distModel.prep_net(args.gpu, args.color_model, True)
+        color_model = CI.ModelTorch(args.gpu, args.color_model, dist=False, mask_cent=args.pytorch_maskcent)
+        dist_model = CI.ModelDistTorch(args.gpu, args.color_model, args.pytorch_maskcent)
     else:
         print(f"Backend type [{args.backend}] unknown")
         sys.exit()
     print("\n")
+
+    colorizer = CI.Colorizer(color_model, args.load_size)
+    dist_colorizer = CI.ColorizerDist(dist_model, args.load_size)
 
     # initialize application
     app = QApplication(sys.argv)
     if args.dark_style and importlib.util.find_spec("qdarkstyle") is not None:
         qdarkstyle = importlib.import_module("qdarkstyle")
         app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyqt5'))
-    window = gui_design.GUIDesign(colorModel, distModel, args.image_file, args.load_size, args.win_size)
+    window = gui_design.GUIDesign(colorizer, dist_colorizer, args.image_file, args.load_size, args.win_size)
     app.setWindowIcon(QIcon('imgs/logo.png'))  # load logo
     window.setWindowTitle('iColor')
     window.setWindowFlags(window.windowFlags())

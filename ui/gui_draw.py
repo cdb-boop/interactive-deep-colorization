@@ -7,7 +7,7 @@ from PyQt5.QtCore import Qt, pyqtSignal, QSize, QPoint
 from .ui_control import UIControl
 from . import utils
 
-from data import lab_gamut, colorize_image
+from data import lab_gamut, colorize_image as CI
 import importlib
 skcolor = importlib.import_module("skimage.color")  # ignore import issue with skimage
 import os
@@ -32,15 +32,15 @@ class GUIDraw(QWidget):
 
     def __init__(
             self, 
-            model: colorize_image.ColorizeImageTorch | colorize_image.ColorizeImageCaffe,
-            dist_model: colorize_image.ColorizeImageTorchDist | colorize_image.ColorizeImageCaffeDist | None = None,
+            colorizer: CI.Colorizer,
+            dist_colorizer: CI.ColorizerDist | None = None,
             load_size: int = 256,
             win_size: int = 512):
         QWidget.__init__(self)
         self.image_file: None | str = None
         self.pos: None | QPoint = None
-        self.model = model
-        self.dist_model = dist_model
+        self.colorizer = colorizer
+        self.dist_colorizer = dist_colorizer
         self.win_size = win_size
         self.load_size = load_size
         self.setFixedSize(win_size, win_size)
@@ -125,10 +125,10 @@ class GUIDraw(QWidget):
         self.im_mask0 = np.zeros((1, self.load_size, self.load_size))
         self.brushWidth = 2 * self.scale
 
-        self.model.load_image(image_file)
+        self.colorizer.data.load_image(image_file)
 
-        if (self.dist_model is not None):
-            self.dist_model.set_image(self.im_rgb)
+        if (self.dist_colorizer is not None):
+            self.dist_colorizer.data.set_image(self.im_rgb)
             self.predict_color()
 
     def update_im(self) -> None:
@@ -256,14 +256,14 @@ class GUIDraw(QWidget):
         path, ext = os.path.splitext(path)
 
         suffix = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
-        method_str = 'with_dist' if self.dist_model is not None else 'without_dist'
+        method_str = 'with_dist' if self.dist_colorizer is not None else 'without_dist'
         save_path = "_".join([path, method_str, suffix])
 
         print(f"GUIDraw: Saving result to \"{save_path}\"\n")
         if not os.path.exists(save_path):
             os.mkdir(save_path)
 
-        np.save(os.path.join(save_path, 'im_l.npy'), self.model.img_l)
+        np.save(os.path.join(save_path, 'im_l.npy'), self.colorizer.data.img_l)
         np.save(os.path.join(save_path, 'im_ab.npy'), self.im_ab0)
         np.save(os.path.join(save_path, 'im_mask.npy'), self.im_mask0)
 
@@ -271,28 +271,34 @@ class GUIDraw(QWidget):
         mask = self.im_mask0.transpose((1, 2, 0)).astype(np.uint8) * 255
         cv2.imwrite(os.path.join(save_path, 'input_mask.png'), mask)
         cv2.imwrite(os.path.join(save_path, 'ours.png'), result_bgr)
-        cv2.imwrite(os.path.join(save_path, 'ours_fullres.png'), self.model.get_img_fullres()[:, :, ::-1])
-        cv2.imwrite(os.path.join(save_path, 'input_fullres.png'), self.model.get_input_img_fullres()[:, :, ::-1])
-        cv2.imwrite(os.path.join(save_path, 'input.png'), self.model.get_input_img()[:, :, ::-1])
-        cv2.imwrite(os.path.join(save_path, 'input_ab.png'), self.model.get_sup_img()[:, :, ::-1])
+        cv2.imwrite(os.path.join(save_path, 'ours_fullres.png'), self.colorizer.data.get_img_fullres()[:, :, ::-1])
+        cv2.imwrite(os.path.join(save_path, 'input_fullres.png'), self.colorizer.data.get_input_img_fullres()[:, :, ::-1])
+        cv2.imwrite(os.path.join(save_path, 'input.png'), self.colorizer.data.get_input_img()[:, :, ::-1])
+        cv2.imwrite(os.path.join(save_path, 'input_ab.png'), self.colorizer.data.get_sup_img()[:, :, ::-1])
 
     def enable_gray(self) -> None:
         self.use_gray = not self.use_gray
         self.update()
 
     def predict_color(self) -> None:
-        if self.dist_model is not None and self.image_loaded:
+        if self.dist_colorizer is not None and self.image_loaded:
             im, mask = self.uiControl.get_input()
             im_mask0 = mask > 0.0
             self.im_mask0 = im_mask0.transpose((2, 0, 1))
             im_lab = skcolor.rgb2lab(im).transpose((2, 0, 1))
             self.im_ab0 = im_lab[1:3, :, :]
 
-            self.dist_model.net_forward(self.im_ab0, self.im_mask0)
+            result = self.dist_colorizer.run(self.im_ab0, self.im_mask0)
+            if isinstance(result, Exception):
+                warnings.warn(f"GUIDraw: {result}", RuntimeWarning)
 
     def suggest_color(self, h: int, w: int, K: int = 5) -> npt.NDArray[np.float32]:
-        if self.dist_model is not None and self.image_loaded:
-            ab, conf = self.dist_model.get_ab_reccs(h, w, K, 25000)
+        if self.dist_colorizer is not None and self.image_loaded:
+            result = self.dist_colorizer.get_ab_reccs(h, w, K, 25000)
+            if isinstance(result, Exception):
+                warnings.warn(f"GUIDraw: {result}", RuntimeWarning)
+                return np.ndarray([], np.float32)
+            ab, conf = result
             if ab is None:
                 warnings.warn("GUIDraw: Unable to suggest color", RuntimeWarning)
                 return np.ndarray([], np.float32)
@@ -300,7 +306,7 @@ class GUIDraw(QWidget):
             colors_lab = np.concatenate((L, ab), axis=1)
             colors_lab3 = colors_lab[:, np.newaxis, :]
             colors_rgb = np.clip(np.squeeze(skcolor.lab2rgb(colors_lab3)), 0, 1)
-            colors_rgb_withcurr = np.concatenate((self.model.get_img_forward()[h, w, np.newaxis, :] / 255., colors_rgb), axis=0)
+            colors_rgb_withcurr = np.concatenate((self.colorizer.data.get_img_forward()[h, w, np.newaxis, :] / 255., colors_rgb), axis=0)
             return colors_rgb_withcurr
         else:
             warnings.warn("GUIDraw: No color suggestion returned", RuntimeWarning)
@@ -313,8 +319,11 @@ class GUIDraw(QWidget):
         im_lab = skcolor.rgb2lab(im).transpose((2, 0, 1))
         self.im_ab0 = im_lab[1:3, :, :]
 
-        self.model.net_forward(self.im_ab0, self.im_mask0)
-        ab = self.model.output_ab.transpose((1, 2, 0))
+        result = self.colorizer.run(self.im_ab0, self.im_mask0)
+        if isinstance(result, Exception):
+            warnings.warn(f"GUIDraw: {result}", RuntimeWarning)
+            return
+        ab = self.colorizer.data.output_ab.transpose((1, 2, 0))
         ab_win = cv2.resize(ab, (self.win_w, self.win_h), interpolation=cv2.INTER_CUBIC)
         pred_lab = np.concatenate((self.l_win[..., np.newaxis], ab_win), axis=2)
         pred_rgb = (np.clip(skcolor.lab2rgb(pred_lab), 0, 1) * 255).astype('uint8')
